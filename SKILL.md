@@ -54,39 +54,19 @@ ls "/Applications/Google Chrome.app"
 - 👤 Not found → tell the user:
   > Google Chrome is not installed. Please download and install it from https://www.google.com/chrome/ then say "continue".
 
-### 3. Chrome DevTools MCP Server
+### 3. Superpowers Chrome Plugin
 
-Verify the chrome-devtools MCP server is configured for Claude Code:
+Verify the superpowers-chrome plugin is available:
 
-```bash
-# Check if chrome-devtools MCP is already configured
-claude mcp list 2>/dev/null | grep -i chrome
+```
+# Check if superpowers-chrome is available by testing browser mode
+mcp__plugin_superpowers-chrome_chrome__use_browser(action: "browser_mode")
 ```
 
-- ✅ Shows `chrome-devtools` entry → continue
-- 🔧 Not listed → add it:
-  ```bash
-  claude mcp add chrome-devtools -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9222
-  ```
-  Alternatively, create or update `.mcp.json` in the project root (Claude Code reads this too):
-  ```bash
-  cat > .mcp.json << 'MCPEOF'
-  {
-    "mcpServers": {
-      "chrome-devtools": {
-        "command": "npx",
-        "args": [
-          "chrome-devtools-mcp@latest",
-          "--browserUrl=http://127.0.0.1:9222"
-        ]
-      }
-    }
-  }
-  MCPEOF
-  ```
-  Then tell the user:
-  > I've configured the Chrome DevTools MCP server. **Please restart your Claude Code session** so it picks up the new MCP server, then repeat your request.
-  **Stop here** — the MCP server won't load until Claude Code restarts.
+- ✅ Returns browser status JSON → continue
+- 🔧 Tool not available → tell the user:
+  > The superpowers-chrome plugin is not installed. Please install it from the Claude Code marketplace, then restart your Claude Code session and repeat your request.
+  **Stop here** — the plugin won't load until Claude Code restarts.
 
 ### 4. Output directory
 
@@ -133,73 +113,44 @@ Then proceed to Research Priority Order below.
 
 ## Prerequisites & Browser Detection
 
-### Detecting an Existing Browser Session
+### Detecting Browser State
 
-**ALWAYS check for an existing browser session FIRST before asking the user to launch anything.**
+**ALWAYS check browser state FIRST before any navigation.**
 
-Use the Chrome DevTools MCP tools to detect whether a browser is already connected:
+Use superpowers-chrome to detect the current browser state:
 
-1. **Try `mcp__chrome-devtools__list_pages`** — if this returns pages, a browser is connected and ready.
-2. **Check if any page is already on Sales Navigator** — look for URLs containing `linkedin.com/sales/` in the page list.
-3. **If a Sales Navigator page exists** — select it and verify authentication (take snapshot, look for logged-in UI elements like the search bar or user avatar).
+1. **Check browser mode**: `{action: "browser_mode"}` — returns whether Chrome is running, headless/headed mode, and current profile
+2. **List open tabs**: `{action: "list_tabs"}` — returns all open tabs with URLs
+3. **Check if any tab is on Sales Navigator** — look for URLs containing `linkedin.com/sales/` in the tab list
 
 **Decision tree:**
 
 ```
-list_pages succeeds?
-├── YES → Pages returned
-│   ├── Sales Navigator page exists? → Select it, verify auth, proceed
-│   └── No Sales Nav page? → Navigate an existing page to Sales Navigator
-│       ├── Authenticated? → Proceed with research
-│       └── Login page? → Ask user to log in (see below)
-└── NO → MCP cannot connect to any browser
-    └── Launch debug Chrome automatically (see below)
-        ├── First run? → Tell user to log into Sales Navigator in the Chrome window
-        └── Returning user? → Session persists, proceed
+{action: "list_tabs"} succeeds?
+├── YES → Tabs returned
+│   ├── Sales Navigator tab exists? → Use it (pass tab_index), verify auth
+│   └── No Sales Nav tab? → Navigate to Sales Navigator
+│       │   {action: "navigate", payload: "https://www.linkedin.com/sales/search/people"}
+│       ├── Authenticated? → Read auto-captured .md file, look for search UI → Proceed
+│       └── Login page? → Switch to headed mode for user login (see below)
+└── NO → superpowers-chrome not available → error with setup instructions
 ```
 
-### Session Recovery
+Chrome auto-starts on first use — no manual launch needed.
+
+### Session Recovery & First-Time Login
 
 If Sales Navigator shows a login page or session expiration:
 
-> **Your LinkedIn Sales Navigator session needs authentication.** Please log in to Sales Navigator in your browser window, then say "continue" and I'll retry.
+1. **Switch to headed mode**: `{action: "show_browser"}` — makes Chrome visible so user can interact
+2. **Tell the user**:
+   > **Your LinkedIn Sales Navigator session needs authentication.** I've made the Chrome window visible. Please log in to Sales Navigator, then say "continue".
+3. **After login**: `{action: "hide_browser"}` — switch back to headless mode
+4. **Session persists** in the superpowers-chrome profile directory across restarts
 
-No scripts or restarts needed — once they log in, the session is live immediately.
+**First-time setup:** On the very first use, the user must log into LinkedIn Sales Navigator in the headed Chrome window. The session cookie (`li_at`) persists in the superpowers-chrome profile (~1 year).
 
-### Fallback: Launch Debug Chrome (Agent-Managed)
-
-If no browser is available, the agent launches Chrome in debug mode automatically. **No external script required.**
-
-1. **Check if debug Chrome is already running:**
-   ```bash
-   curl -s "http://127.0.0.1:9222/json/version"
-   ```
-   If this returns JSON, Chrome is ready — skip to navigation.
-
-2. **Launch Chrome with remote debugging:**
-   ```bash
-   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-     --remote-debugging-port=9222 \
-     --user-data-dir="$HOME/.chrome-debug-profile" \
-     > /dev/null 2>&1 &
-   ```
-
-3. **Wait for Chrome to be ready** (poll up to 10 seconds):
-   ```bash
-   for i in $(seq 1 20); do
-     curl -s "http://127.0.0.1:9222/json/version" > /dev/null 2>&1 && echo "ready" && break
-     sleep 0.5
-   done
-   ```
-
-4. **First-run detection:** If `~/.chrome-debug-profile` didn't exist before launch, tell the user:
-   > This is the first time debug Chrome has been launched. Please log into LinkedIn Sales Navigator in the Chrome window that just opened, then say "continue".
-
-5. **If port 9222 still isn't responding** after 10 seconds, tell the user to close all other Chrome windows and try again.
-
-6. **LinkedIn session**: On first use, the user logs into LinkedIn Sales Navigator in the debug Chrome window. The session persists across Chrome restarts in `~/.chrome-debug-profile/` — no re-login needed unless the session expires (~1 year for `li_at` cookie).
-
-7. **MCP configured**: The `chrome-devtools` MCP must have `--browserUrl=http://127.0.0.1:9222` in its args so it connects to the running debug Chrome instead of spawning a new instance.
+**Profile location:** `~/Library/Caches/superpowers/browser-profiles/superpowers-chrome/` (macOS)
 
 ## Parallel Subagent Architecture
 

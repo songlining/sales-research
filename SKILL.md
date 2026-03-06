@@ -1139,10 +1139,9 @@ When profiling contacts, **actively look for mentions of products that have sale
 | **Databricks** | Terraform + Vault + Nomad | Data/ML platform. Terraform provisions, Vault secures, Nomad schedules jobs |
 | **SageMaker** | Terraform + Vault | AWS ML platform. Terraform provisions endpoints, Vault manages API keys |
 
-Use these tools for web research:
-- `websearch_web_search_exa` — structured web search
-- `webfetch` — fetch specific URLs
-- `google_search` — broader web search with URL analysis
+Use these built-in Claude Code tools for web research:
+- `WebSearch` — web search with up-to-date results (built into Claude Code, no MCP needed)
+- `WebFetch` — fetch and analyze content from specific URLs (built into Claude Code, no MCP needed)
 
 ### Phase 3: Compile Intelligence Brief
 

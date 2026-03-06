@@ -1516,10 +1516,11 @@ If a file already exists, **append new findings** (deep-dives, additional search
 
 | Situation | Action |
 |-----------|--------|
-| No browser detected by MCP | Launch debug Chrome automatically via bash (see Browser Detection section) |
+| No browser detected by MCP | Launch debug Chrome automatically via bash (see Browser Detection section). If `mcp__chrome-devtools__list_pages` returns an error, the MCP server may not be connected — check `claude mcp list` and restart if needed. |
 | Browser detected but no Sales Nav session | Navigate to Sales Navigator, check auth |
 | Login page appears | Session expired — ask user to log in in their browser window, then retry |
 | Debug Chrome not starting | Tell user to close all Chrome windows, then try again |
+| MCP tool permission prompt | Claude Code may ask the user to approve MCP tool usage on first invocation. This is normal — approve and continue. |
 | Port 9222 not responding | Another Chrome may be using the port — kill it with `kill $(lsof -ti :9222)` and retry |
 | 0 search results | Inform user, suggest broadening criteria |
 | Page doesn't load (timeout) | Retry with `wait_for` (longer timeout), then ask user |

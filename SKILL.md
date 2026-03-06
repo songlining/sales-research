@@ -139,7 +139,7 @@ Then proceed to Research Priority Order below.
 
 Use the Chrome DevTools MCP tools to detect whether a browser is already connected:
 
-1. **Try `chrome-devtools list_pages`** — if this returns pages, a browser is connected and ready.
+1. **Try `mcp__chrome-devtools__list_pages`** — if this returns pages, a browser is connected and ready.
 2. **Check if any page is already on Sales Navigator** — look for URLs containing `linkedin.com/sales/` in the page list.
 3. **If a Sales Navigator page exists** — select it and verify authentication (take snapshot, look for logged-in UI elements like the search bar or user avatar).
 
@@ -410,7 +410,7 @@ Ask the user for (or infer from context):
 
 **Follow the Browser Detection flow above.** In summary:
 
-1. Call `chrome-devtools list_pages` to check for an existing browser
+1. Call `mcp__chrome-devtools__list_pages` to check for an existing browser
 2. If pages exist, look for a Sales Navigator page and select it
 3. If no Sales Nav page, navigate to `https://www.linkedin.com/sales/search/people`
 4. Verify authentication via snapshot
@@ -426,7 +426,7 @@ Ask the user for (or infer from context):
 **IMPORTANT:** Do NOT use hardcoded CSS selectors. LinkedIn changes their DOM frequently. Always discover the current UI structure first.
 
 ```
-chrome-devtools  take_snapshot  →  read current page structure
+mcp__chrome-devtools__take_snapshot  →  read current page structure
 ```
 
 From the snapshot:
@@ -476,15 +476,15 @@ Sales Navigator filters are interactive — each requires click → type → sel
 
 ```
 # For each filter (company, location, title/keywords):
-chrome-devtools  click       →  click the filter button/area (uid from snapshot)
-chrome-devtools  fill        →  type the search term into the typeahead
-chrome-devtools  wait_for    →  wait for dropdown suggestions to appear
-chrome-devtools  click       →  select the matching option from dropdown
+mcp__chrome-devtools__click       →  click the filter button/area (uid from snapshot)
+mcp__chrome-devtools__fill        →  type the search term into the typeahead
+mcp__chrome-devtools__wait_for    →  wait for dropdown suggestions to appear
+mcp__chrome-devtools__click       →  select the matching option from dropdown
 ```
 
 After applying all filters, wait for results to load:
 ```
-chrome-devtools  wait_for    →  wait for result count or profile cards
+mcp__chrome-devtools__wait_for    →  wait for result count or profile cards
 ```
 
 **If 0 results:** Inform the user and suggest broadening criteria (fewer filters, wider location, etc.).
@@ -500,7 +500,7 @@ chrome-devtools  wait_for    →  wait for result count or profile cards
 Take a fresh snapshot of the results page:
 
 ```
-chrome-devtools  take_snapshot  →  read result cards structure
+mcp__chrome-devtools__take_snapshot  →  read result cards structure
 ```
 
 Then use `evaluate_script` to extract structured data. **Adapt selectors based on the snapshot** — the example below is illustrative only:
@@ -545,10 +545,10 @@ Paginate through results with these safeguards:
 
 ```
 # Pagination loop:
-chrome-devtools  click       →  click "Next" or scroll to load more
+mcp__chrome-devtools__click       →  click "Next" or scroll to load more
 # Wait 2-3 seconds
-chrome-devtools  wait_for    →  wait for new results to render
-chrome-devtools  take_snapshot  →  re-snapshot to extract new profiles
+mcp__chrome-devtools__wait_for    →  wait for new results to render
+mcp__chrome-devtools__take_snapshot  →  re-snapshot to extract new profiles
 ```
 
 #### Step 7: Deep-dive key profiles
@@ -1556,15 +1556,17 @@ If a file already exists, **append new findings** (deep-dives, additional search
 
 | Command | Purpose |
 |---------|---------|
-| `chrome-devtools list_pages` | Detect existing browser session |
-| `chrome-devtools select_page` | Switch to Sales Navigator tab |
-| `chrome-devtools navigate_page` | Go to Sales Navigator URL |
-| `chrome-devtools take_snapshot` | Discover page structure (always before interacting) |
-| `chrome-devtools fill` | Type into filter typeaheads |
-| `chrome-devtools click` | Click filters, dropdowns, pagination |
-| `chrome-devtools evaluate_script` | Extract profile data from DOM |
-| `chrome-devtools wait_for` | Wait for page/results to load |
-| `chrome-devtools take_screenshot` | Debug when DOM is unrecognizable |
+| `mcp__chrome-devtools__list_pages` | Detect existing browser session, list open pages |
+| `mcp__chrome-devtools__select_page` | Switch to Sales Navigator tab |
+| `mcp__chrome-devtools__navigate_page` | Go to Sales Navigator URL |
+| `mcp__chrome-devtools__take_snapshot` | Discover page structure (always before interacting) |
+| `mcp__chrome-devtools__fill` | Type into filter typeaheads and input fields |
+| `mcp__chrome-devtools__click` | Click filters, dropdowns, pagination, profile links |
+| `mcp__chrome-devtools__evaluate_script` | Extract structured profile data from DOM via JavaScript |
+| `mcp__chrome-devtools__wait_for` | Wait for page/results to load (text-based) |
+| `mcp__chrome-devtools__take_screenshot` | Debug when DOM is unrecognizable — visual fallback |
+| `mcp__chrome-devtools__new_page` | Open new tab for parallel browsing |
+| `mcp__chrome-devtools__hover` | Hover to reveal tooltips and hidden elements |
 
 ## Limitations
 

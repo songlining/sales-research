@@ -1475,15 +1475,14 @@ If a file already exists, **append new findings** (deep-dives, additional search
 
 | Situation | Action |
 |-----------|--------|
-| No browser detected by MCP | Launch debug Chrome automatically via bash (see Browser Detection section). If `mcp__chrome-devtools__list_pages` returns an error, the MCP server may not be connected — check `claude mcp list` and restart if needed. |
-| Browser detected but no Sales Nav session | Navigate to Sales Navigator, check auth |
-| Login page appears | Session expired — ask user to log in in their browser window, then retry |
-| Debug Chrome not starting | Tell user to close all Chrome windows, then try again |
+| No browser detected | superpowers-chrome auto-starts Chrome. If `{action: "browser_mode"}` fails, the plugin may not be installed — check marketplace. |
+| Browser detected but no Sales Nav session | Navigate to Sales Navigator, read auto-captured `.md` to check auth |
+| Login page appears | Session expired — `{action: "show_browser"}` → ask user to log in → `{action: "hide_browser"}` |
+| Chrome not starting | superpowers-chrome manages Chrome lifecycle. If issues persist, try `{action: "show_browser"}` to debug visually. |
 | MCP tool permission prompt | Claude Code may ask the user to approve MCP tool usage on first invocation. This is normal — approve and continue. |
-| Port 9222 not responding | Another Chrome may be using the port — kill it with `kill $(lsof -ti :9222)` and retry |
 | 0 search results | Inform user, suggest broadening criteria |
-| Page doesn't load (timeout) | Retry with `wait_for` (longer timeout), then ask user |
-| DOM structure unrecognizable | Take screenshot, show user, ask for guidance |
+| Page doesn't load (timeout) | Retry with `{action: "await_text", payload: "...", timeout: 30000}`, then ask user |
+| DOM structure unrecognizable | Read auto-captured `.png` screenshot, show user, ask for guidance |
 | Rate limit / CAPTCHA | Stop immediately, inform user, wait before retrying |
 | Sales Navigator unavailable | Fall back to web-only research, note limitation in output |
 
@@ -1494,8 +1493,8 @@ If a file already exists, **append new findings** (deep-dives, additional search
 
 **Skill does:**
 1. Checks CLAUDE.md: Acme Corp has Vault Dedicated (100), TFE-BUS (1,000), Packer (7,000)
-2. Calls `list_pages` — detects user's browser with Sales Navigator already open
-3. Selects the Sales Navigator page, verifies authentication via snapshot
+2. Calls `{action: "list_tabs"}` — detects browser with Sales Navigator already open
+3. Navigates to Sales Navigator tab, reads auto-captured `.md` to verify authentication
 4. **Pass 1**: Searches Acme Corp + IT function + Manager/Director/VP/CXO seniority → captures leadership (490 results, page 1 captured)
 5. **Pass 2**: Searches Acme Corp + keywords `terraform OR vault OR hashicorp` → captures specialists (16 results, all captured)
 6. **Pass 3**: Searches Acme Corp + security function → captures security team (271 results, page 1 all 25 captured)
@@ -1511,36 +1510,52 @@ If a file already exists, **append new findings** (deep-dives, additional search
 15. Compiles full intelligence brief with conversation strategy, risks & watchouts, AI/ML opportunities, competitive landscape, and next steps
 16. Saves to `HashiCorp/by-customer/Acme/Acme Corp Sales Intelligence Brief.md`
 
-## Chrome DevTools Commands Used
+## Browser Commands Used (superpowers-chrome)
 
-| Command | Purpose |
-|---------|---------|
-| `mcp__chrome-devtools__list_pages` | Detect existing browser session, list open pages |
-| `mcp__chrome-devtools__select_page` | Switch to Sales Navigator tab |
-| `mcp__chrome-devtools__navigate_page` | Go to Sales Navigator URL |
-| `mcp__chrome-devtools__take_snapshot` | Discover page structure (always before interacting) |
-| `mcp__chrome-devtools__fill` | Type into filter typeaheads and input fields |
-| `mcp__chrome-devtools__click` | Click filters, dropdowns, pagination, profile links |
-| `mcp__chrome-devtools__evaluate_script` | Extract structured profile data from DOM via JavaScript |
-| `mcp__chrome-devtools__wait_for` | Wait for page/results to load (text-based) |
-| `mcp__chrome-devtools__take_screenshot` | Debug when DOM is unrecognizable — visual fallback |
-| `mcp__chrome-devtools__new_page` | Open new tab for parallel browsing |
-| `mcp__chrome-devtools__hover` | Hover to reveal tooltips and hidden elements |
+All browser interactions use the single `mcp__plugin_superpowers-chrome_chrome__use_browser` tool with an `action` parameter:
+
+| Action | Purpose |
+|--------|---------|
+| `{action: "list_tabs"}` | Detect existing browser session, list open tabs |
+| `{action: "navigate", payload: URL}` | Go to Sales Navigator URL (auto-captures .md/.png/.html to disk) |
+| `{action: "extract", payload: "markdown"}` | Get page content when auto-capture insufficient |
+| `{action: "type", selector, payload}` | Type into filter typeaheads and input fields |
+| `{action: "click", selector}` | Click filters, dropdowns, pagination, profile links |
+| `{action: "eval", payload: JS}` | Extract structured profile data from DOM via JavaScript |
+| `{action: "await_text", payload}` | Wait for specific text to appear on page |
+| `{action: "await_element", selector}` | Wait for specific element to appear |
+| `{action: "screenshot", payload: path}` | Capture screenshot for debugging |
+| `{action: "new_tab"}` | Open new tab for parallel browsing |
+| `{action: "show_browser"}` / `{action: "hide_browser"}` | Toggle headed mode for user login |
+| `{action: "browser_mode"}` | Check browser status and profile |
+| `Read` tool on auto-captured `.md` files | **Primary** way to inspect page content — avoids context bloat |
+
+### Context Window Strategy
+
+superpowers-chrome auto-captures page state to **files on disk** after every DOM action. The agent should:
+
+1. **Perform the action** (navigate, click, type) — auto-capture happens automatically
+2. **Read the auto-captured `.md` file** using the `Read` tool — targeted and lightweight
+3. **Never use `extract` unless the auto-captured file is insufficient** — this is the key context win
+4. **Use `Read` with offset/limit** for large Sales Navigator pages — don't load the entire file
+
+This keeps DOM content out of the conversation context unless explicitly needed.
 
 ## Limitations
 
 - Requires active LinkedIn Sales Navigator subscription
-- Prefers using an existing browser session; falls back to agent-launched debug Chrome (port 9222)
-- Port 9222 is exposed on localhost — any local process can connect. Don't browse sensitive sites in debug Chrome.
-- `li_at` cookie typically lasts ~1 year, but LinkedIn may invalidate sessions on suspicious activity
+- superpowers-chrome auto-manages Chrome — no manual browser launch needed
+- LinkedIn `li_at` cookie typically lasts ~1 year, but LinkedIn may invalidate sessions on suspicious activity
 - Rate limits: 2-3 second delays enforced between actions; stop on CAPTCHA
-- Dynamic selectors: always snapshot-first, never rely on hardcoded selectors
+- Dynamic selectors: always read auto-captured content first, never rely on hardcoded selectors
 - LinkedIn ToS: use responsibly, don't bulk-scrape
+- `hover` action not directly available — use `eval` with `dispatchEvent(new MouseEvent('mouseover'))` as workaround
+- `fill_form` (batch fill) not available — use sequential `type` actions instead
 
 ## Tips
 
 - **Sales Navigator first** — always start here for people research, then enrich with web context
-- **Detect existing sessions** — always try `list_pages` before asking the user to launch anything
+- **Read auto-captured files** — after every browser action, read the `.md` file from disk instead of extracting inline. This is the #1 way to save context window space.
 - Check if the company is already a **saved account** in Sales Navigator — richer signals available
 - Look for **decision maker changes** (new hires in past 90 days) — warm outreach opportunity
 - Cross-reference Sales Navigator findings with CLAUDE.md customer data for existing product usage
@@ -1553,4 +1568,4 @@ If a file already exists, **append new findings** (deep-dives, additional search
 - Mark profiles as ✅ **DEEP-DIVED** in tables so you can see research coverage at a glance
 - **Contractors are NOT decision-makers** — always note employment type and flag the likely budget holder
 - Use `#prospects` and `#sales-research` tags for Dataview queries across all research files
-- Debug Chrome launches automatically when needed — no manual scripts required
+- **Use headed mode for debugging** — if something isn't working, `{action: "show_browser"}` to see what Chrome is doing

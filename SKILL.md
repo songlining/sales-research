@@ -54,16 +54,21 @@ ls "/Applications/Google Chrome.app"
 - 👤 Not found → tell the user:
   > Google Chrome is not installed. Please download and install it from https://www.google.com/chrome/ then say "continue".
 
-### 3. `.mcp.json` (Chrome DevTools MCP config)
+### 3. Chrome DevTools MCP Server
 
-Check if `.mcp.json` exists in the project root (the directory where OpenCode was launched):
+Verify the chrome-devtools MCP server is configured for Claude Code:
 
 ```bash
-cat .mcp.json
+# Check if chrome-devtools MCP is already configured
+claude mcp list 2>/dev/null | grep -i chrome
 ```
 
-- ✅ Contains `chrome-devtools` with `--browserUrl=http://127.0.0.1:9222` → continue
-- 🔧 Missing or doesn't contain `chrome-devtools` →
+- ✅ Shows `chrome-devtools` entry → continue
+- 🔧 Not listed → add it:
+  ```bash
+  claude mcp add chrome-devtools -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9222
+  ```
+  Alternatively, create or update `.mcp.json` in the project root (Claude Code reads this too):
   ```bash
   cat > .mcp.json << 'MCPEOF'
   {
@@ -80,8 +85,8 @@ cat .mcp.json
   MCPEOF
   ```
   Then tell the user:
-  > I've created the Chrome DevTools MCP configuration. **Please restart OpenCode** (`Ctrl+C` then `opencode` again) so it picks up the new MCP server, then repeat your request.
-  **Stop here** — the MCP server won't load until OpenCode restarts.
+  > I've configured the Chrome DevTools MCP server. **Please restart your Claude Code session** so it picks up the new MCP server, then repeat your request.
+  **Stop here** — the MCP server won't load until Claude Code restarts.
 
 ### 4. Output directory
 
@@ -95,7 +100,7 @@ ls HashiCorp/by-customer/ 2>/dev/null
   mkdir -p HashiCorp/by-customer
   ```
 
-### 5. CLAUDE.md (user context — optional but recommended)
+### 5. CLAUDE.md (user context — Claude Code reads this automatically)
 
 ```bash
 cat CLAUDE.md 2>/dev/null

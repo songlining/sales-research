@@ -1,6 +1,6 @@
 # How To: Run Sales Research with AI
 
-This guide walks you through setting up and running the **Sales Research** skill on your MacBook. It uses an AI agent (via OpenCode CLI) to automate company prospecting — pulling contact data from LinkedIn Sales Navigator, enriching it with web research, and producing a ready-to-use intelligence brief.
+This guide walks you through setting up and running the **Sales Research** skill on your MacBook. It uses an AI agent (via Claude Code CLI) to automate company prospecting — pulling contact data from LinkedIn Sales Navigator, enriching it with web research, and producing a ready-to-use intelligence brief.
 
 **What you'll get**: A Markdown file with tiered contacts, org charts, product ownership analysis, conversation hooks, mutual connection paths, AI/ML opportunity mapping, and competitive landscape — all compiled automatically.
 
@@ -59,47 +59,40 @@ node --version
 
 You should see something like `v22.x.x` or higher.
 
-### Step 3: Install OpenCode CLI
+### Step 3: Install Claude Code CLI
 
 In Terminal:
 
 ```bash
-brew install opencode
+npm install -g @anthropic-ai/claude-code
 ```
 
 Verify it worked:
 
 ```bash
-opencode --version
+claude --version
 ```
 
-> **If `brew install opencode` doesn't work**, check the latest install instructions at [https://github.com/opencode-ai/opencode](https://github.com/opencode-ai/opencode) — the install method may have changed.
+> **If `npm install` doesn't work**, check the latest install instructions at [https://docs.anthropic.com/en/docs/claude-code](https://docs.anthropic.com/en/docs/claude-code) — the install method may have changed.
 
-### Step 4: Connect OpenCode to GitHub Copilot
+### Step 4: Authenticate Claude Code
 
-OpenCode needs an AI provider to work. We use **GitHub Copilot** (included with your GitHub account).
+Claude Code connects directly to the Anthropic API using your API key or an Anthropic account.
 
-1. Open Terminal and run OpenCode from any folder:
+1. Open Terminal and run Claude Code from any folder:
 
    ```bash
    cd ~/sales-research
-   mkdir -p .git && git init  # OpenCode needs a git repo — we'll set this up properly later
-   opencode
+   claude
    ```
 
-2. Once OpenCode opens, type:
+2. On first launch, Claude Code will prompt you to authenticate. Follow the on-screen instructions — you can either:
+   - Log in with your Anthropic account (opens a browser window), or
+   - Provide an API key
 
-   ```
-   /connect
-   ```
+3. Once authenticated, close Claude Code for now (press `Ctrl+C` or type `/exit`) — we'll come back to it after finishing setup.
 
-3. Follow the on-screen instructions — it will open a browser window asking you to authorise with GitHub. Log in and approve the connection.
-
-4. Once connected, select the AI model. Press `Ctrl+K` (or the model picker shortcut shown on screen) and choose **`claude-opus-4.6`** (also labelled "Opus 4.6").
-
-5. Close OpenCode for now (press `Ctrl+C` or type `/exit`) — we'll come back to it after finishing setup.
-
-> **Why Opus 4.6?** It's the most capable model for complex research tasks like navigating Sales Navigator and synthesising intelligence briefs.
+> **Why Claude Code?** It's purpose-built for agentic workflows — it can control a browser via MCP, dispatch parallel research agents, and produce structured output, all from a single CLI session.
 
 ### Step 5: Set Up Your Research Folder
 
@@ -185,7 +178,13 @@ Replace the placeholder content with your real name, role, and customer list. Th
 
 ### Step 9: Configure the Chrome DevTools MCP
 
-Create the MCP configuration file that tells OpenCode how to connect to your debug Chrome:
+Add the Chrome DevTools MCP server to Claude Code:
+
+```bash
+claude mcp add chrome-devtools -s user -- npx chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9222
+```
+
+Alternatively, create an `.mcp.json` file in your research folder (Claude Code reads this too):
 
 ```bash
 cat > ~/sales-research/.mcp.json << 'EOF'
@@ -203,26 +202,18 @@ cat > ~/sales-research/.mcp.json << 'EOF'
 EOF
 ```
 
-Then commit it:
-
-```bash
-cd ~/sales-research
-git add .mcp.json
-git commit -m "Add MCP config for Chrome DevTools"
-```
-
 ---
 
 ## Part 2: Running a Research Session
 
 Do these steps every time you want to research a company.
 
-### Step 1: Start OpenCode
+### Step 1: Start Claude Code
 
-Open Terminal, navigate to your research folder, and launch OpenCode:
+Open Terminal, navigate to your research folder, and launch Claude Code:
 ```bash
 cd ~/sales-research
-opencode
+claude
 ```
 
 ### Step 2: Log Into Sales Navigator (First Time Only)
@@ -288,7 +279,6 @@ Or if you use Obsidian, open your `~/sales-research` folder as a vault and the b
 ---
 
 ## Troubleshooting
-## Troubleshooting
 
 ### "Chrome is already running on port 9222"
 
@@ -314,12 +304,12 @@ Your LinkedIn session expired. In the debug Chrome window:
 
 1. Go to https://www.linkedin.com/sales/
 2. Log in again
-3. Go back to OpenCode and type `continue`
+3. Go back to Claude Code and type `continue`
 
 ### AI says "No browser detected" or MCP connection errors
 1. Ask the AI to launch debug Chrome (it does this automatically, but you can say "launch Chrome")
-2. Make sure `.mcp.json` exists in your research folder (check Step 9 of setup)
-3. Restart OpenCode: exit and run `opencode` again
+2. Check that the Chrome DevTools MCP is configured: run `claude mcp list` and look for `chrome-devtools`
+3. Restart Claude Code: exit and run `claude` again
 
 ### 0 search results on Sales Navigator
 
@@ -333,13 +323,13 @@ The company name might not match exactly. Try:
 LinkedIn rate-limits bot-like behaviour. The AI deliberately waits 2–3 seconds between actions. If it seems stuck:
 - Wait 30 seconds — it may be rate-limited
 - Check the debug Chrome window — can you see what it's doing?
-- If truly stuck, type `stop` in OpenCode and try a simpler request
+- If truly stuck, type `stop` in Claude Code and try a simpler request
 
 ### "CAPTCHA appeared"
 
 LinkedIn detected automated browsing. In the debug Chrome window:
 1. Solve the CAPTCHA manually
-2. Go back to OpenCode and type `continue`
+2. Go back to Claude Code and type `continue`
 
 ---
 
@@ -365,7 +355,7 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 
 | Task | Command |
 |------|---------|
-| Start OpenCode | `cd ~/sales-research && opencode` |
+| Start Claude Code | `cd ~/sales-research && claude` |
 | Research a company | Type naturally: "Research [Company] — [what you need]" |
 | Deep-dive a person | "Deep-dive [Name] from [Company]" |
 | Add to existing brief | "Add more contacts to the [Company] brief" |
@@ -384,7 +374,7 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 │       └── sales-research/
 │           ├── SKILL.md              ← AI's research instructions
 │           └── IMPLEMENTATION_SUMMARY.md
-├── .mcp.json                         ← MCP config for Chrome DevTools
+├── .mcp.json                         ← MCP config for Chrome DevTools (optional if using `claude mcp add`)
 ├── CLAUDE.md                         ← Your info & customer list
 └── HashiCorp/
     └── by-customer/

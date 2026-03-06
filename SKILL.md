@@ -198,7 +198,7 @@ If no browser is available, the agent launches Chrome in debug mode automaticall
 
 ## Parallel Subagent Architecture
 
-**Sales research should maximize parallelism.** The orchestrating/main/Sisyphus agent coordinates multiple subagents working simultaneously on different research tracks.
+**Sales research should maximize parallelism.** The orchestrating agent (you) coordinates multiple background agents working simultaneously on different research tracks.
 
 ### Why Parallel
 
@@ -212,10 +212,9 @@ If no browser is available, the agent launches Chrome in debug mode automaticall
 
 | Agent | Type | Responsibility | Browser Needed? |
 |-------|------|---------------|----------------|
-| **Navigator Agent** | `deep` (primary) | Sales Navigator search, profile extraction, deep-dives via browser | **YES** — exclusive browser access |
-| **Web Research Agent(s)** | `explore` / `librarian` (background) | Company tech stack, news, job postings, press releases | No |
-| **Analysis Agent** | `deep` (background) | Cross-reference findings, build org chart, identify ownership patterns | No |
-| **Brief Writer Agent** | `writing` | Compile final intelligence brief from all agent outputs | No |
+| **Main Agent (you)** | Orchestrator | Sales Navigator search, profile extraction, deep-dives via browser. Coordinates all work. | **YES** — exclusive browser access |
+| **Web Research Agent(s)** | `Agent(subagent_type="general-purpose", run_in_background=true)` | Company tech stack, news, job postings, press releases, AI/ML strategy, competitive landscape | No |
+| **Vault Explorer Agent** | `Agent(subagent_type="Explore", run_in_background=true)` | Check existing customer data in local files (CLAUDE.md, HashiCorp/by-customer/) | No |
 
 ### Parallel Execution Pattern
 
@@ -224,22 +223,23 @@ Phase 0: Gather criteria + detect browser
          │
          ├──────────────────────────────────────────────────┐
          │                                                  │
-Phase 1: Navigator Agent (browser)          Phase 1: Web Research Agents (parallel)
+Phase 1: Main Agent (browser)               Phase 1: Background Agents (parallel)
          │                                                  │
-         ├─ Search pass 1 (broad)            ├─ librarian: company tech stack
-         ├─ Search pass 2 (targeted)         ├─ librarian: job postings w/ HashiCorp tools
-         ├─ Search pass 3 (security/etc)     ├─ explore: existing customer data in vault
-         ├─ Search pass 4 (follows HC)       ├─ librarian: recent news & press releases
-         ├─ Extract all search results       ├─ librarian: good/bad news & media sentiment
-         ├─ Deep-dive top profiles           └─ librarian: conference talks, blog posts
+         ├─ Search pass 1 (broad)            ├─ Agent: company tech stack
+         ├─ Search pass 2 (targeted)         ├─ Agent: job postings w/ HashiCorp tools
+         ├─ Search pass 3 (security/etc)     ├─ Agent: existing customer data in vault
+         ├─ Search pass 4 (follows HC)       ├─ Agent: recent news & press releases
+         ├─ Extract all search results       ├─ Agent: good/bad news & media sentiment
+         ├─ Deep-dive top profiles           ├─ Agent: AI/ML strategy
+         │                                   └─ Agent: competitive landscape
          │                                                  │
          └──────────────────┬───────────────────────────────┘
                             │
-Phase 2: Collect all results (background_output on each agent)
+Phase 2: Collect all results (TaskOutput on each agent ID)
                             │
 Phase 3: Analysis — ownership mapping, org chart, intro paths
                             │
-Phase 4: Compile brief (orchestrator or writing agent)
+Phase 4: Compile brief (orchestrator writes directly)
                             │
 Phase 5: Save to vault
 ```
@@ -249,57 +249,87 @@ Phase 5: Save to vault
 **The orchestrating agent (you) should:**
 
 1. **Fire web research agents IMMEDIATELY** after getting criteria — don't wait for Sales Navigator
-2. **Start Sales Navigator browsing yourself** (or delegate to a `deep` agent with browser skills)
-3. **Collect web research results** as they complete — they'll finish before Sales Navigator work
-4. **Write to brief incrementally** — update the brief file after each deep-dive, don't batch
+2. **Dispatch ALL background agents in a SINGLE message** — Claude Code runs them in true parallel only when sent together
+3. **Start Sales Navigator browsing yourself** — you have exclusive browser access
+4. **Collect web research results** as they complete — use `TaskOutput` to retrieve results by agent ID
+5. **Write to brief incrementally** — update the brief file after each deep-dive, don't batch
 
 **Example delegation pattern:**
 
-```typescript
-// Fire these ALL AT ONCE before touching Sales Navigator:
-task(subagent_type="librarian", run_in_background=true, load_skills=[],
-  description="Research [Company] tech stack and cloud strategy",
-  prompt="[CONTEXT]: Researching [Company] for sales engagement across the HashiCorp portfolio (Terraform, Vault, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint)...")
+Dispatch ALL of these in a single message (critical for parallelism):
 
-task(subagent_type="librarian", run_in_background=true, load_skills=[],
-  description="Find [Company] job postings mentioning HashiCorp tools",
-  prompt="[CONTEXT]: Looking for evidence of HashiCorp tool usage at [Company]. Search for: Terraform, Vault, Packer, Consul, Nomad, Boundary, Waypoint, Vault Radar, and any HCP (HashiCorp Cloud Platform) references...")
+```
+Agent(
+  subagent_type="general-purpose",
+  run_in_background=True,
+  description="Research [Company] tech stack",
+  prompt="[CONTEXT]: Researching [Company] for sales engagement across the HashiCorp portfolio (Terraform, Vault, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint). Use WebSearch and WebFetch to find: cloud provider(s) and migration status, infrastructure tooling (IaC, CI/CD, observability), containerization/Kubernetes adoption, managed service providers. Return findings as structured markdown with evidence sources."
+)
 
-task(subagent_type="explore", run_in_background=true, load_skills=[],
-  description="Check existing customer data for [Company]",
-  prompt="[CONTEXT]: Check CLAUDE.md and HashiCorp/by-customer/[Company]/ for existing intel...")
+Agent(
+  subagent_type="general-purpose",
+  run_in_background=True,
+  description="Find [Company] job postings",
+  prompt="[CONTEXT]: Looking for evidence of HashiCorp tool usage at [Company]. Use WebSearch to find job postings mentioning: Terraform, Vault, Packer, Consul, Nomad, Boundary, Waypoint, Vault Radar, HCP (HashiCorp Cloud Platform). Also search for competitor tools: CyberArk, Pulumi, OpenTofu, Venafi. Return structured findings with job posting URLs."
+)
 
-task(subagent_type="librarian", run_in_background=true, load_skills=[],
-  description="Find [Company] recent news and technology initiatives",
-  prompt="[CONTEXT]: Looking for recent press, conference talks, blog posts from [Company] engineers...")
+Agent(
+  subagent_type="Explore",
+  run_in_background=True,
+  description="Check existing customer data",
+  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Check HashiCorp/by-customer/[Company]/ for prior research briefs. Return: existing product usage, prior contacts found, any stale data that needs refresh."
+)
 
-task(subagent_type="librarian", run_in_background=true, load_skills=[],
-  description="Research [Company] recent good and bad news in media",
-  prompt="[CONTEXT]: Researching recent media coverage for [Company] to identify positive and negative business news. Search for: recent earnings reports and financial performance, executive changes or departures, layoffs or hiring surges, regulatory actions or fines, lawsuits or legal disputes, data breaches or security incidents, M&A activity (acquisitions, divestitures, mergers), product launches or failures, customer wins or losses, partnerships or contract awards, analyst upgrades/downgrades, ESG controversies, reputation issues, awards or industry recognition. Search multiple sources: mainstream financial media (AFR, Bloomberg, Reuters, CNBC), industry press (iTnews, ZDNet, CRN, The Register), social media sentiment (Reddit, HackerNews, Twitter/X), Glassdoor reviews for internal culture signals. Classify each finding as POSITIVE, NEGATIVE, or NEUTRAL with a brief impact assessment. Focus on the last 6 months but flag any major events in the past 12 months. This is critical for sales call preparation — walking into a meeting unaware of recent bad news is a credibility killer, and knowing about good news creates conversation hooks.")
+Agent(
+  subagent_type="general-purpose",
+  run_in_background=True,
+  description="Research [Company] recent news",
+  prompt="[CONTEXT]: Looking for recent press, conference talks, blog posts from [Company] engineers. Use WebSearch to find: recent earnings/financial performance, executive changes, layoffs/hiring surges, regulatory actions, data breaches, M&A activity, product launches, partnerships. Classify each as POSITIVE/NEGATIVE/NEUTRAL. Focus on last 6 months. Return structured markdown."
+)
 
-task(subagent_type="librarian", run_in_background=true, load_skills=[],
-  description="Research [Company] AI/ML strategy and infrastructure",
-  prompt="[CONTEXT]: Researching [Company] AI/ML maturity for HashiCorp sales positioning. Search for: AI/ML platform investments (SageMaker, Vertex AI, Databricks, MLflow), LLM provider usage (OpenAI, Anthropic, Azure OpenAI, Bedrock), agentic AI adoption, GPU infrastructure, AI governance policies, Chief AI Officer or Head of AI hires, AI-related press releases and conference talks, ML engineer job postings. Classify maturity as Exploring/Building/Scaling/Transforming. Map findings to HashiCorp products: Vault (API key management, AI agent credentials), Terraform (GPU provisioning, ML infra), Nomad (training jobs, model serving), Boundary (ML notebook access), Vault Radar (leaked API keys).")
+Agent(
+  subagent_type="general-purpose",
+  run_in_background=True,
+  description="Research [Company] good/bad news",
+  prompt="[CONTEXT]: Researching recent media coverage for [Company] to identify positive and negative business news. Use WebSearch across: mainstream financial media (AFR, Bloomberg, Reuters, CNBC), industry press (iTnews, ZDNet, CRN, The Register), social media sentiment (Reddit, HackerNews). Classify each finding as POSITIVE, NEGATIVE, or NEUTRAL with brief impact assessment. Focus on last 6 months but flag major events in past 12 months."
+)
 
-task(subagent_type="librarian", run_in_background=true, load_skills=[],
-  description="Research [Company] competitive landscape for HashiCorp products",
-  prompt="[CONTEXT]: Researching what competitor products [Company] uses that overlap with HashiCorp. Search for evidence of: CyberArk/Delinea/BeyondTrust/Thales (Vault competitors), Venafi/AppViewX/Keyfactor (PKI/certificate competitors to Vault PKI), Pulumi/OpenTofu/Bicep/CloudFormation/CDK (Terraform competitors), Teleport/Zscaler ZPA/Tailscale (Boundary competitors), Istio/Linkerd/AWS App Mesh (Consul competitors), ECS/Docker Swarm (Nomad competitors), GitGuardian/TruffleHog/GitHub Secret Scanning (Vault Radar competitors). Check job postings, LinkedIn profiles, conference talks, blog posts, case studies. Note contract size/maturity signals if available.")
+Agent(
+  subagent_type="general-purpose",
+  run_in_background=True,
+  description="Research [Company] AI/ML strategy",
+  prompt="[CONTEXT]: Researching [Company] AI/ML maturity for HashiCorp sales positioning. Use WebSearch to find: AI/ML platform investments (SageMaker, Vertex AI, Databricks, MLflow), LLM provider usage (OpenAI, Anthropic, Azure OpenAI, Bedrock), agentic AI adoption, GPU infrastructure, AI governance policies, AI-related hires and job postings. Classify maturity as Exploring/Building/Scaling/Transforming. Map findings to HashiCorp products."
+)
 
-// THEN start Sales Navigator browsing (sequential, browser-dependent)
-// ... browser work here ...
+Agent(
+  subagent_type="general-purpose",
+  run_in_background=True,
+  description="Research [Company] competitive landscape",
+  prompt="[CONTEXT]: Researching what competitor products [Company] uses that overlap with HashiCorp. Use WebSearch to find evidence of: CyberArk/Delinea/BeyondTrust (Vault competitors), Venafi/AppViewX/Keyfactor (Vault PKI competitors), Pulumi/OpenTofu/Bicep/CloudFormation (Terraform competitors), Teleport/Zscaler ZPA (Boundary competitors), Istio/Linkerd (Consul competitors). Check job postings, conference talks, blog posts, case studies. Return structured findings."
+)
+```
 
-// Collect results when needed:
-background_output(task_id="librarian_tech_stack_id")
-background_output(task_id="librarian_job_postings_id")
-// etc.
+**Collecting results:**
+
+After dispatching background agents, start Sales Navigator browsing immediately. When you need results later:
+
+```
+# Each Agent call returns a task_id (agent ID). Use it to collect results:
+TaskOutput(task_id="<agent_id_from_tech_stack_agent>", block=true, timeout=120000)
+TaskOutput(task_id="<agent_id_from_job_postings_agent>", block=true, timeout=120000)
+# ... etc for each agent
+
+# Claude Code automatically notifies you when background agents complete.
+# You do NOT need to poll — just call TaskOutput when you're ready to use the results.
 ```
 
 ### Constraints on Parallelism
 
-- **Only ONE agent can use the browser at a time.** The browser is a shared, exclusive resource.
-- **Web research agents (librarian/explore) are cheap and fast** — fire 3-5 in parallel without hesitation.
-- **Deep agents are expensive** — use for complex analysis or when a task requires autonomous multi-step reasoning.
-- **Brief updates must be serialized** — only one agent writes to the brief file at a time to avoid conflicts. The orchestrator should own brief writes.
+- **Only the MAIN agent can use the browser.** Background agents do NOT have browser access — MCP tools are only available to the orchestrating agent.
+- **All background agents must be dispatched in a SINGLE message** for true parallelism. If sent in separate messages, they run sequentially.
+- **Web research agents are cheap and fast** — fire 5-7 in parallel without hesitation.
+- **Each background agent starts with fresh context** — include ALL necessary information in the `prompt` parameter. They don't see prior conversation history.
+- **Brief updates must be serialized** — only the main agent writes to the brief file. Background agents return their findings as text, and the orchestrator integrates them.
 - **Rate limit Sales Navigator** — even with parallel web research, the browser agent must still wait 2-3s between Sales Navigator actions.
 
 ### When NOT to Parallelize
@@ -323,17 +353,17 @@ digraph sales_research {
     style=dashed;
     color=blue;
 
-    nav [label="Navigator Agent\n(browser — sequential)" shape=box style=filled fillcolor=lightyellow];
-    web1 [label="librarian: tech stack\n(background)" shape=box style=filled fillcolor=lightblue];
-    web2 [label="librarian: job postings\n(background)" shape=box style=filled fillcolor=lightblue];
-    web3 [label="librarian: news & press\n(background)" shape=box style=filled fillcolor=lightblue];
-    web3b [label="librarian: good/bad news\n& media sentiment\n(background)" shape=box style=filled fillcolor=lightblue];
-    web4 [label="explore: existing data\n(background)" shape=box style=filled fillcolor=lightgreen];
-    web5 [label="librarian: AI/ML strategy\n(background)" shape=box style=filled fillcolor=lightblue];
-    web6 [label="librarian: competitive landscape\n(background)" shape=box style=filled fillcolor=lightblue];
+    nav [label="Main Agent\n(browser — sequential)" shape=box style=filled fillcolor=lightyellow];
+    web1 [label="Agent: tech stack\n(background)" shape=box style=filled fillcolor=lightblue];
+    web2 [label="Agent: job postings\n(background)" shape=box style=filled fillcolor=lightblue];
+    web3 [label="Agent: news & press\n(background)" shape=box style=filled fillcolor=lightblue];
+    web3b [label="Agent: good/bad news\n& media sentiment\n(background)" shape=box style=filled fillcolor=lightblue];
+    web4 [label="Agent: existing data\n(background)" shape=box style=filled fillcolor=lightgreen];
+    web5 [label="Agent: AI/ML strategy\n(background)" shape=box style=filled fillcolor=lightblue];
+    web6 [label="Agent: competitive landscape\n(background)" shape=box style=filled fillcolor=lightblue];
   }
 
-  collect [label="Collect all results\n(background_output)" shape=box];
+  collect [label="Collect all results\n(TaskOutput)" shape=box];
   analyze [label="Ownership analysis\nOrg chart\nIntro paths" shape=box];
   compile [label="Compile intelligence\nbrief" shape=box];
   file [label="Save to vault" shape=box];

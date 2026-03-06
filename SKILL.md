@@ -361,28 +361,31 @@ Ask the user for (or infer from context):
 
 **Follow the Browser Detection flow above.** In summary:
 
-1. Call `mcp__chrome-devtools__list_pages` to check for an existing browser
-2. If pages exist, look for a Sales Navigator page and select it
-3. If no Sales Nav page, navigate to `https://www.linkedin.com/sales/search/people`
-4. Verify authentication via snapshot
-5. If no browser available, launch debug Chrome automatically (see Browser Detection section above)
+1. Call `{action: "list_tabs"}` to check for open tabs
+2. If a Sales Navigator tab exists, use it (pass `tab_index` on subsequent actions)
+3. If no Sales Nav tab, navigate: `{action: "navigate", payload: "https://www.linkedin.com/sales/search/people"}`
+4. Read the auto-captured `.md` file to verify authentication (look for search UI elements)
+5. If login page appears, switch to headed mode: `{action: "show_browser"}` → user logs in → `{action: "hide_browser"}`
 
 **Check for the company as a saved account first:**
 - Navigate to `https://www.linkedin.com/sales/company/[companyId]` if known
 - Or search for the company in Sales Navigator's account search
 - Saved/priority accounts have richer data (decision maker alerts, news, org changes)
 
-#### Step 3: Discover page structure (snapshot-first approach)
+#### Step 3: Discover page structure (auto-capture approach)
 
 **IMPORTANT:** Do NOT use hardcoded CSS selectors. LinkedIn changes their DOM frequently. Always discover the current UI structure first.
 
-```
-mcp__chrome-devtools__take_snapshot  →  read current page structure
-```
+**Context-saving strategy:** After every DOM action (navigate, click, type), superpowers-chrome auto-captures the page to files:
+- `{prefix}.md` — page content as structured markdown
+- `{prefix}.png` — viewport screenshot
+- `{prefix}.html` — full rendered DOM
 
-From the snapshot:
+**Read the auto-captured `.md` file** using the `Read` tool to discover the page structure. This is far more context-efficient than extracting inline.
+
+From the captured markdown:
 1. Identify the **filter controls** (company, location, keywords/title, function, seniority)
-2. Note the element `uid`s for each filter
+2. Note the CSS selectors for each filter
 3. Sales Navigator uses a **filter panel** with dropdowns and typeaheads — not a simple form
 
 #### Step 4: Apply search filters (adaptive multi-pass strategy)
@@ -427,16 +430,18 @@ Sales Navigator filters are interactive — each requires click → type → sel
 
 ```
 # For each filter (company, location, title/keywords):
-mcp__chrome-devtools__click       →  click the filter button/area (uid from snapshot)
-mcp__chrome-devtools__fill        →  type the search term into the typeahead
-mcp__chrome-devtools__wait_for    →  wait for dropdown suggestions to appear
-mcp__chrome-devtools__click       →  select the matching option from dropdown
+{action: "click", selector: "..."}          →  click the filter button/area
+{action: "type", selector: "...", payload: "search term"}  →  type into the typeahead
+{action: "await_text", payload: "suggestion text"}  →  wait for dropdown suggestions
+{action: "click", selector: "..."}          →  select the matching option from dropdown
 ```
 
 After applying all filters, wait for results to load:
 ```
-mcp__chrome-devtools__wait_for    →  wait for result count or profile cards
+{action: "await_text", payload: "results"}  →  wait for result count or profile cards
 ```
+
+**Reading results:** After each action, read the auto-captured `.md` file to inspect the current page state. This keeps the context window lean — only load what you need.
 
 **If 0 results:** Inform the user and suggest broadening criteria (fewer filters, wider location, etc.).
 
@@ -448,28 +453,30 @@ mcp__chrome-devtools__wait_for    →  wait for result count or profile cards
 
 #### Step 5: Extract profile data
 
-Take a fresh snapshot of the results page:
+Read the auto-captured `.md` file from the last action to inspect result cards:
 
 ```
-mcp__chrome-devtools__take_snapshot  →  read result cards structure
+# The .md file from the last navigate/click is already on disk
+# Read it with the Read tool — much lighter than extracting inline
+Read(file_path: "<session_dir>/<latest_prefix>.md")
 ```
 
-Then use `evaluate_script` to extract structured data. **Adapt selectors based on the snapshot** — the example below is illustrative only:
+Then use `eval` to extract structured data. **Adapt selectors based on the captured page content** — the example below is illustrative only:
 
 ```javascript
-// EXAMPLE ONLY — adapt selectors from your snapshot
-() => {
-  const cards = document.querySelectorAll('[data-view-name="search-result-card"]');
-  return Array.from(cards).map(card => ({
-    name: card.querySelector('[data-anonymize="person-name"]')?.textContent?.trim(),
-    title: card.querySelector('[data-anonymize="title"]')?.textContent?.trim(),
-    company: card.querySelector('[data-anonymize="company-name"]')?.textContent?.trim(),
-    location: card.querySelector('[data-anonymize="location"]')?.textContent?.trim(),
-    profileUrl: card.querySelector('a[href*="/sales/lead/"]')?.href,
-    tenure: card.querySelector('.artdeco-entity-lockup__caption')?.textContent?.trim()
-  })).filter(p => p.name);
-}
+// EXAMPLE ONLY — adapt selectors from your captured .md/.html
+// Use {action: "eval", payload: "..."} with the JS below:
+JSON.stringify(Array.from(document.querySelectorAll('[data-view-name="search-result-card"]')).map(card => ({
+  name: card.querySelector('[data-anonymize="person-name"]')?.textContent?.trim(),
+  title: card.querySelector('[data-anonymize="title"]')?.textContent?.trim(),
+  company: card.querySelector('[data-anonymize="company-name"]')?.textContent?.trim(),
+  location: card.querySelector('[data-anonymize="location"]')?.textContent?.trim(),
+  profileUrl: card.querySelector('a[href*="/sales/lead/"]')?.href,
+  tenure: card.querySelector('.artdeco-entity-lockup__caption')?.textContent?.trim()
+})).filter(p => p.name))
 ```
+
+**Note:** Use `JSON.stringify()` to wrap complex return values — `eval` requires JSON-serializable output.
 
 **Key data points to capture per profile (from search results):**
 - Name, title, company
@@ -496,10 +503,11 @@ Paginate through results with these safeguards:
 
 ```
 # Pagination loop:
-mcp__chrome-devtools__click       →  click "Next" or scroll to load more
-# Wait 2-3 seconds
-mcp__chrome-devtools__wait_for    →  wait for new results to render
-mcp__chrome-devtools__take_snapshot  →  re-snapshot to extract new profiles
+{action: "click", selector: "..."}          →  click "Next" or scroll trigger
+# Wait 2-3 seconds (rate limiting)
+{action: "await_text", payload: "result text"}  →  wait for new results to render
+# Read auto-captured .md file to extract new profiles
+Read(file_path: "<session_dir>/<latest_prefix>.md")
 ```
 
 #### Step 7: Deep-dive key profiles

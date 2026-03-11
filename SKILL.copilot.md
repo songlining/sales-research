@@ -65,8 +65,8 @@ mcp__plugin_superpowers-chrome_chrome__use_browser(action: "browser_mode")
 
 - ✅ Returns browser status JSON → continue
 - 🔧 Tool not available → tell the user:
-  > The superpowers-chrome plugin is not installed. Please install it from the Claude Code marketplace, then restart your Claude Code session and repeat your request.
-  **Stop here** — the plugin won't load until Claude Code restarts.
+  > The superpowers-chrome plugin is not installed. Please install it from the Copilot plugin marketplace (or via `/plugin`), then restart your GitHub Copilot CLI session and repeat your request.
+  **Stop here** — the plugin will not load until Copilot CLI restarts.
 
 ### 4. Output directories
 
@@ -91,7 +91,7 @@ Examples:
 - `Reserve Bank of Australia` → `reserve-bank-of-australia`
 - `Qantas Airways` → `qantas-airways`
 
-### 5. CLAUDE.md (user context — Claude Code reads this automatically)
+### 5. CLAUDE.md (user context — Copilot CLI respects this automatically)
 
 ```bash
 cat CLAUDE.md 2>/dev/null
@@ -147,16 +147,16 @@ Use superpowers-chrome to detect the current browser state:
 └── NO → superpowers-chrome not available → error with setup instructions
 ```
 
-**Browser invariant:** Always use `mcp__plugin_superpowers-chrome_chrome__use_browser` for browser work. Do **not** manually launch Chrome, do not switch to another browser automation tool, and do not try to connect to Chrome directly from the shell or via a fixed debugging port.
+**Browser invariant:** Always use `mcp__plugin_superpowers-chrome_chrome__use_browser` for browser work in Copilot. Do **not** manually launch Chrome, do not switch to another browser automation tool, and do not try to connect to Chrome directly from the shell.
 
-**Startup verification:** Treat Chrome lifecycle as MCP-managed and CDP-controlled, but verify readiness with MCP read actions instead of assuming startup succeeded:
+**Startup verification:** Treat Chrome lifecycle as MCP-managed and CDP-controlled, but do not assume startup succeeded until MCP read actions work:
 
 1. Call `{action: "browser_mode"}`.
 2. Call `{action: "list_tabs"}`.
 3. If either call fails, or Chrome appears briefly and then exits, stop and report a **superpowers-chrome startup failure** rather than guessing.
-4. Do **not** use `{action: "show_browser"}` / `{action: "hide_browser"}` as generic startup recovery.
+4. Do **not** use `{action: "show_browser"}` / `{action: "hide_browser"}` as generic startup recovery. Reserve them for confirmed login or another explicit user-interaction need.
 
-The underlying browser control channel is the **Chrome DevTools Protocol (CDP)**. Let the MCP manage any free internal CDP port; do not assume or configure a fixed remote debugging port yourself.
+The underlying browser control channel is the **Chrome DevTools Protocol (CDP)**. Do **not** assume a fixed remote debugging port is available; let the MCP manage Chrome and use any free, non-conflicting CDP port internally.
 
 ### Session Recovery & First-Time Login
 
@@ -174,23 +174,23 @@ If Sales Navigator shows a login page or session expiration:
 
 ## Parallel Subagent Architecture
 
-**Sales research should maximize parallelism.** The orchestrating agent (you) coordinates multiple background agents working simultaneously on different research tracks.
+**Sales research should maximize parallelism.** The orchestrating agent (you) should coordinate multiple Copilot subagents in the background while keeping exclusive control of the browser work.
 
 ### Why Parallel
 
-- **Sales Navigator browsing is single-threaded** — only one agent can control the browser at a time
-- **But web research, analysis, and brief-writing are embarrassingly parallel** — multiple agents can research different aspects simultaneously
-- **Deep-dives are independent** — once you have a list of profiles, each deep-dive is an independent unit of work
-- **Time is money** — a 30-minute sequential research session should take 10 minutes with 3 parallel agents
-- **Context Rusting** is an issue which parallelism helps mitigate — the longer a single agent holds the context, the more likely it is to become outdated or "rusty" as new information comes in. Parallel agents can work with fresh context slices relevant to their specific task.
+- **Sales Navigator browsing is single-threaded** — only one agent should control the browser at a time
+- **Web research, analysis, and brief-writing parallelize cleanly** — these are independent workstreams
+- **Deep-dives are independent** — once you have a list of profiles, each deep-dive is its own unit of work
+- **Time is money** — a 30-minute sequential research session should compress significantly when 5-7 background agents work in parallel
+- **Fresh context improves quality** — each Copilot subagent starts with a clean context window, so focused prompts produce sharper results
 
 ### Agent Roles
 
 | Agent | Type | Responsibility | Browser Needed? |
 |-------|------|---------------|----------------|
 | **Main Agent (you)** | Orchestrator | Sales Navigator search, profile extraction, deep-dives via browser. Coordinates all work. | **YES** — exclusive browser access |
-| **Web Research Agent(s)** | `Agent(subagent_type="general-purpose", run_in_background=true)` | Company tech stack, news, job postings, press releases, AI/ML strategy, competitive landscape | No |
-| **Vault Explorer Agent** | `Agent(subagent_type="Explore", run_in_background=true)` | Check existing customer data in local files (CLAUDE.md, HashiCorp/by-customer/) | No |
+| **Web Research Agent(s)** | `task(agent_type="general-purpose", mode="background")` | Company tech stack, news, job postings, press releases, AI/ML strategy, competitive landscape | No |
+| **Vault Explorer Agent** | `task(agent_type="explore", mode="background")` | Check existing customer data in local files (`CLAUDE.md`, `HashiCorp/by-customer/`) | No |
 
 ### Parallel Execution Pattern
 
@@ -211,7 +211,7 @@ Phase 1: Main Agent (browser)               Phase 1: Background Agents (parallel
          │                                                  │
          └──────────────────┬───────────────────────────────┘
                             │
-Phase 2: Collect all results (TaskOutput on each agent ID)
+Phase 2: Collect all results (`read_agent` on each agent ID)
                             │
 Phase 3: Analysis — ownership mapping, org chart, intro paths
                             │
@@ -227,63 +227,63 @@ Phase 6: Save final brief to vault
 **The orchestrating agent (you) should:**
 
 1. **Fire web research agents IMMEDIATELY** after getting criteria — don't wait for Sales Navigator
-2. **Dispatch ALL background agents in a SINGLE message** — Claude Code runs them in true parallel only when sent together
+2. **Dispatch ALL background agents in a SINGLE tool-calling turn** so Copilot can run them in parallel
 3. **Start Sales Navigator browsing yourself** — you have exclusive browser access
-4. **Collect web research results** as they complete — use `TaskOutput` to retrieve results by agent ID
+4. **Collect web research results** as they complete — use `read_agent` with each returned `agent_id`
 5. **Write intermediate files and brief incrementally** — save each research track to `docs/sales-research/[Account]/` as it completes, then integrate the findings into the brief
 
 **Example delegation pattern:**
 
-Dispatch ALL of these in a single message (critical for parallelism):
+Dispatch ALL of these in one parallel batch (critical for parallelism):
 
 ```
-Agent(
-  subagent_type="general-purpose",
-  run_in_background=True,
-  description="Research [Company] tech stack",
-  prompt="[CONTEXT]: Researching [Company] for sales engagement across the HashiCorp portfolio (Terraform, Vault, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint). Use WebSearch and WebFetch to find: cloud provider(s) and migration status, infrastructure tooling (IaC, CI/CD, observability), containerization/Kubernetes adoption, managed service providers. Return findings as structured markdown with evidence sources."
+task(
+  description="Research tech stack",
+  agent_type="general-purpose",
+  mode="background",
+  prompt="[CONTEXT]: Researching [Company] for sales engagement across the HashiCorp portfolio (Terraform, Vault, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint). Use browser/web discovery plus web_fetch on promising URLs to find: cloud provider(s) and migration status, infrastructure tooling (IaC, CI/CD, observability), containerization/Kubernetes adoption, managed service providers. Return findings as structured markdown with evidence sources."
 )
 
-Agent(
-  subagent_type="general-purpose",
-  run_in_background=True,
-  description="Find [Company] job postings",
-  prompt="[CONTEXT]: Looking for evidence of HashiCorp tool usage at [Company]. Use WebSearch to find job postings mentioning: Terraform, Vault, Packer, Consul, Nomad, Boundary, Waypoint, Vault Radar, HCP (HashiCorp Cloud Platform). Also search for competitor tools: CyberArk, Pulumi, OpenTofu, Venafi. Return structured findings with job posting URLs."
+task(
+  description="Find job postings",
+  agent_type="general-purpose",
+  mode="background",
+  prompt="[CONTEXT]: Looking for evidence of HashiCorp tool usage at [Company]. Search for job postings mentioning: Terraform, Vault, Packer, Consul, Nomad, Boundary, Waypoint, Vault Radar, HCP (HashiCorp Cloud Platform). Also search for competitor tools: CyberArk, Pulumi, OpenTofu, Venafi. Return structured findings with job posting URLs."
 )
 
-Agent(
-  subagent_type="Explore",
-  run_in_background=True,
-  description="Check existing customer data",
+task(
+  description="Check customer data",
+  agent_type="explore",
+  mode="background",
   prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Check HashiCorp/by-customer/[Company]/ for prior research briefs. Return: existing product usage, prior contacts found, any stale data that needs refresh."
 )
 
-Agent(
-  subagent_type="general-purpose",
-  run_in_background=True,
-  description="Research [Company] recent news",
-  prompt="[CONTEXT]: Looking for recent press, conference talks, blog posts from [Company] engineers. Use WebSearch to find: recent earnings/financial performance, executive changes, layoffs/hiring surges, regulatory actions, data breaches, M&A activity, product launches, partnerships. Classify each as POSITIVE/NEGATIVE/NEUTRAL. Focus on last 6 months. Return structured markdown."
+task(
+  description="Research recent news",
+  agent_type="general-purpose",
+  mode="background",
+  prompt="[CONTEXT]: Looking for recent press, conference talks, blog posts from [Company] engineers. Search for: recent earnings/financial performance, executive changes, layoffs/hiring surges, regulatory actions, data breaches, M&A activity, product launches, partnerships. Classify each as POSITIVE/NEGATIVE/NEUTRAL. Focus on last 6 months. Return structured markdown."
 )
 
-Agent(
-  subagent_type="general-purpose",
-  run_in_background=True,
-  description="Research [Company] good/bad news",
-  prompt="[CONTEXT]: Researching recent media coverage for [Company] to identify positive and negative business news. Use WebSearch across: mainstream financial media (AFR, Bloomberg, Reuters, CNBC), industry press (iTnews, ZDNet, CRN, The Register), social media sentiment (Reddit, HackerNews). Classify each finding as POSITIVE, NEGATIVE, or NEUTRAL with brief impact assessment. Focus on last 6 months but flag major events in past 12 months."
+task(
+  description="Research good bad news",
+  agent_type="general-purpose",
+  mode="background",
+  prompt="[CONTEXT]: Researching recent media coverage for [Company] to identify positive and negative business news. Search across mainstream financial media (AFR, Bloomberg, Reuters, CNBC), industry press (iTnews, ZDNet, CRN, The Register), and social media sentiment (Reddit, HackerNews). Classify each finding as POSITIVE, NEGATIVE, or NEUTRAL with brief impact assessment. Focus on last 6 months but flag major events in past 12 months."
 )
 
-Agent(
-  subagent_type="general-purpose",
-  run_in_background=True,
-  description="Research [Company] AI/ML strategy",
-  prompt="[CONTEXT]: Researching [Company] AI/ML maturity for HashiCorp sales positioning. Use WebSearch to find: AI/ML platform investments (SageMaker, Vertex AI, Databricks, MLflow), LLM provider usage (OpenAI, Anthropic, Azure OpenAI, Bedrock), agentic AI adoption, GPU infrastructure, AI governance policies, AI-related hires and job postings. Classify maturity as Exploring/Building/Scaling/Transforming. Map findings to HashiCorp products."
+task(
+  description="Research AI strategy",
+  agent_type="general-purpose",
+  mode="background",
+  prompt="[CONTEXT]: Researching [Company] AI/ML maturity for HashiCorp sales positioning. Search for: AI/ML platform investments (SageMaker, Vertex AI, Databricks, MLflow), LLM provider usage (OpenAI, Anthropic, Azure OpenAI, Bedrock), agentic AI adoption, GPU infrastructure, AI governance policies, AI-related hires and job postings. Classify maturity as Exploring/Building/Scaling/Transforming. Map findings to HashiCorp products."
 )
 
-Agent(
-  subagent_type="general-purpose",
-  run_in_background=True,
-  description="Research [Company] competitive landscape",
-  prompt="[CONTEXT]: Researching what competitor products [Company] uses that overlap with HashiCorp. Use WebSearch to find evidence of: CyberArk/Delinea/BeyondTrust (Vault competitors), Venafi/AppViewX/Keyfactor (Vault PKI competitors), Pulumi/OpenTofu/Bicep/CloudFormation (Terraform competitors), Teleport/Zscaler ZPA (Boundary competitors), Istio/Linkerd (Consul competitors). Check job postings, conference talks, blog posts, case studies. Return structured findings."
+task(
+  description="Research competition",
+  agent_type="general-purpose",
+  mode="background",
+  prompt="[CONTEXT]: Researching what competitor products [Company] uses that overlap with HashiCorp. Search for evidence of: CyberArk/Delinea/BeyondTrust (Vault competitors), Venafi/AppViewX/Keyfactor (Vault PKI competitors), Pulumi/OpenTofu/Bicep/CloudFormation (Terraform competitors), Teleport/Zscaler ZPA (Boundary competitors), Istio/Linkerd (Consul competitors). Check job postings, conference talks, blog posts, case studies. Return structured findings."
 )
 ```
 
@@ -292,28 +292,28 @@ Agent(
 After dispatching background agents, start Sales Navigator browsing immediately. When you need results later:
 
 ```
-# Each Agent call returns a task_id (agent ID). Use it to collect results:
-TaskOutput(task_id="<agent_id_from_tech_stack_agent>", block=true, timeout=120000)
-TaskOutput(task_id="<agent_id_from_job_postings_agent>", block=true, timeout=120000)
+# Each task call returns an agent_id. Use it to collect results:
+read_agent(agent_id="<agent_id_from_tech_stack_agent>", wait=true, timeout=120)
+read_agent(agent_id="<agent_id_from_job_postings_agent>", wait=true, timeout=120)
 # ... etc for each agent
 
-# Claude Code automatically notifies you when background agents complete.
-# You do NOT need to poll — just call TaskOutput when you're ready to use the results.
+# Copilot CLI notifies you when background agents complete.
+# You do NOT need to poll constantly — call read_agent when you're ready to use the results.
 ```
 
 ### Constraints on Parallelism
 
-- **Only the MAIN agent can use the browser.** Background agents do NOT have browser access — MCP tools are only available to the orchestrating agent.
-- **All background agents must be dispatched in a SINGLE message** for true parallelism. If sent in separate messages, they run sequentially.
+- **Only the MAIN agent can use the browser.** Background agents should not do browser automation — keep that with the orchestrator.
+- **All background agents should be dispatched together** for true parallelism. Separate turns may serialize the work.
 - **Web research agents are cheap and fast** — fire 5-7 in parallel without hesitation.
-- **Each background agent starts with fresh context** — include ALL necessary information in the `prompt` parameter. They don't see prior conversation history.
-- **Brief updates must be serialized** — only the main agent writes to the brief file. Background agents return their findings as text, and the orchestrator integrates them.
-- **Rate limit Sales Navigator** — even with parallel web research, the browser agent must still wait 2-3s between Sales Navigator actions.
+- **Each background agent starts with fresh context** — include ALL necessary information in the `prompt` parameter. They do not inherit your full conversation history.
+- **Brief updates must be serialized** — only the main agent writes to the brief file. Background agents return findings as text and the orchestrator integrates them.
+- **Rate limit Sales Navigator** — even with parallel web research, the browser agent should still wait 2-3s between Sales Navigator actions.
 
 ### When NOT to Parallelize
 
 - **Trivial research** (1 company, 2-3 known contacts) — just do it yourself, sequentially
-- **User is watching and iterating** — parallel agents return asynchronously, which can be confusing if the user is giving real-time direction
+- **User is watching and iterating** — background agents return asynchronously, which can be confusing if the user is giving real-time direction
 - **Follow-up deep-dives** — if the user says "now look at this specific person", do it directly in the browser, don't spawn an agent
 
 ## Workflow
@@ -341,7 +341,7 @@ digraph sales_research {
     web6 [label="Agent: competitive landscape\n(background)" shape=box style=filled fillcolor=lightblue];
   }
 
-  collect [label="Collect all results\n(TaskOutput)" shape=box];
+  collect [label="Collect all results\n(read_agent)" shape=box];
   analyze [label="Ownership analysis\nOrg chart\nIntro paths" shape=box];
   compile [label="Compile intelligence\nbrief" shape=box];
   file [label="Save to vault" shape=box];
@@ -392,7 +392,7 @@ Then ask the user for (or infer from context):
 3. If a Sales Navigator tab exists, use it (pass `tab_index` on subsequent actions)
 4. If no Sales Nav tab, navigate: `{action: "navigate", payload: "https://www.linkedin.com/sales/search/people"}`
 5. Read the auto-captured `.md` file to verify authentication (look for search UI elements)
-6. If a login page appears, switch to headed mode: `{action: "show_browser"}` → user logs in → `{action: "hide_browser"}`
+6. If login page appears, switch to headed mode: `{action: "show_browser"}` → user logs in → `{action: "hide_browser"}`
 
 **Check for the company as a saved account first:**
 - Navigate to `https://www.linkedin.com/sales/company/[companyId]` if known
@@ -408,7 +408,7 @@ Then ask the user for (or infer from context):
 - `{prefix}.png` — viewport screenshot
 - `{prefix}.html` — full rendered DOM
 
-**Read the auto-captured `.md` file** using the `Read` tool to discover the page structure. This is far more context-efficient than extracting inline.
+**Read the auto-captured `.md` file** using the `view` tool to discover the page structure. This is far more context-efficient than extracting inline.
 
 From the captured markdown:
 1. Identify the **filter controls** (company, location, keywords/title, function, seniority)
@@ -484,8 +484,8 @@ Read the auto-captured `.md` file from the last action to inspect result cards:
 
 ```
 # The .md file from the last navigate/click is already on disk
-# Read it with the Read tool — much lighter than extracting inline
-Read(file_path: "<session_dir>/<latest_prefix>.md")
+# Read it with the view tool — much lighter than extracting inline
+view(path: "<session_dir>/<latest_prefix>.md")
 ```
 
 Then use `eval` to extract structured data. **Adapt selectors based on the captured page content** — the example below is illustrative only:
@@ -534,7 +534,7 @@ Paginate through results with these safeguards:
 # Wait 2-3 seconds (rate limiting)
 {action: "await_text", payload: "result text"}  →  wait for new results to render
 # Read auto-captured .md file to extract new profiles
-Read(file_path: "<session_dir>/<latest_prefix>.md")
+view(path: "<session_dir>/<latest_prefix>.md")
 ```
 
 #### Step 7: Deep-dive key profiles
@@ -1127,9 +1127,10 @@ When profiling contacts, **actively look for mentions of products that have sale
 | **Databricks** | Terraform + Vault + Nomad | Data/ML platform. Terraform provisions, Vault secures, Nomad schedules jobs |
 | **SageMaker** | Terraform + Vault | AWS ML platform. Terraform provisions endpoints, Vault manages API keys |
 
-Use these built-in Claude Code tools for web research:
-- `WebSearch` — web search with up-to-date results (built into Claude Code, no MCP needed)
-- `WebFetch` — fetch and analyze content from specific URLs (built into Claude Code, no MCP needed)
+Use these Copilot CLI tools for web research:
+- `web_fetch` — fetch and analyze content from specific URLs
+- Background `task(...)` agents — delegate focused research and synthesis in parallel
+- Browser-based discovery when needed (for finding promising URLs before fetching them)
 
 ### Phase 3: Compile Intelligence Brief
 
@@ -1539,7 +1540,7 @@ If a file already exists, **append new findings** (deep-dives, additional search
 | Browser detected but no Sales Nav session | Navigate to Sales Navigator, read auto-captured `.md` to check auth |
 | Login page appears | Session expired — `{action: "show_browser"}` → ask user to log in → `{action: "hide_browser"}` |
 | Chrome not starting | Chrome lifecycle is MCP-managed over CDP. Do **not** manually launch Chrome, do not rely on a fixed remote debugging port, and do not fall back to another browser tool. If `{action: "browser_mode"}` / `{action: "list_tabs"}` fail or Chrome immediately exits, stop and tell the user the MCP-managed session is not staying alive. |
-| MCP tool permission prompt | Claude Code may ask the user to approve MCP tool usage on first invocation. This is normal — approve and continue. |
+| MCP/plugin permission prompt | Copilot CLI may ask the user to approve plugin or MCP tool usage on first invocation. This is normal — approve and continue. |
 | 0 search results | Inform user, suggest broadening criteria |
 | Page doesn't load (timeout) | Retry with `{action: "await_text", payload: "...", timeout: 30000}`, then ask user |
 | DOM structure unrecognizable | Read auto-captured `.png` screenshot, show user, ask for guidance |
@@ -1590,16 +1591,16 @@ All browser interactions use the single `mcp__plugin_superpowers-chrome_chrome__
 | `{action: "new_tab"}` | Open new tab for parallel browsing |
 | `{action: "show_browser"}` / `{action: "hide_browser"}` | Toggle headed mode for confirmed login or another explicit user-interaction step |
 | `{action: "browser_mode"}` | Check browser status and profile |
-| `Read` tool on auto-captured `.md` files | **Primary** way to inspect page content — avoids context bloat |
+| `view` tool on auto-captured `.md` files | **Primary** way to inspect page content — avoids context bloat |
 
 ### Context Window Strategy
 
 superpowers-chrome auto-captures page state to **files on disk** after every DOM action. The agent should:
 
 1. **Perform the action** (navigate, click, type) — auto-capture happens automatically
-2. **Read the auto-captured `.md` file** using the `Read` tool — targeted and lightweight
+2. **Read the auto-captured `.md` file** using the `view` tool — targeted and lightweight
 3. **Never use `extract` unless the auto-captured file is insufficient** — this is the key context win
-4. **Use `Read` with offset/limit** for large Sales Navigator pages — don't load the entire file
+4. **Use `view` with line ranges** for large Sales Navigator pages — do not load the entire file
 
 This keeps DOM content out of the conversation context unless explicitly needed.
 
@@ -1617,7 +1618,7 @@ This keeps DOM content out of the conversation context unless explicitly needed.
 ## Tips
 
 - **Sales Navigator first** — always start here for people research, then enrich with web context
-- **Read auto-captured files** — after every browser action, read the `.md` file from disk instead of extracting inline. This is the #1 way to save context window space.
+- **Read auto-captured files** — after every browser action, inspect the `.md` file from disk with `view` instead of extracting inline. This is the #1 way to save context window space.
 - Check if the company is already a **saved account** in Sales Navigator — richer signals available
 - Look for **decision maker changes** (new hires in past 90 days) — warm outreach opportunity
 - Cross-reference Sales Navigator findings with CLAUDE.md customer data for existing product usage

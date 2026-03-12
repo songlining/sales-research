@@ -81,14 +81,19 @@ ls HashiCorp/by-customer/ 2>/dev/null
   ```
 
 Create and use a single company folder for all research artifacts:
-- `HashiCorp/by-customer/[Customer]/[Company]/`
+- `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
+
+Where:
+- `[Company Folder]` is a deterministic filesystem-safe version of the display company name. Replace `/` and `\` with ` - `, replace other path-special characters (`: * ? " < > |`) with `-`, trim trailing periods/spaces, and collapse repeated whitespace.
+- Apply the same filesystem-safe cleanup to `[Customer Folder]` if the customer name includes path-special characters.
+- Keep the original display company name (`[Company]`) in the brief title and body.
 
 Store **every** intermediate markdown artifact directly in that company folder.
 
 Examples:
 - `HashiCorp/by-customer/Telstra/Singtel Optus/`
 - `HashiCorp/by-customer/Commonwealth Bank/Reserve Bank of Australia/`
-- `HashiCorp/by-customer/Qantas/Qantas Airways/`
+- `HashiCorp/by-customer/Qantas/Qantas Airways - Jetstar/`
 
 ### 5. CLAUDE.md (user context — Copilot CLI respects this automatically)
 
@@ -229,7 +234,7 @@ Phase 6: Save final brief to vault
 2. **Dispatch ALL background agents in a SINGLE tool-calling turn** so Copilot can run them in parallel
 3. **Start Sales Navigator browsing yourself** — you have exclusive browser access
 4. **Collect web research results** as they complete — use `read_agent` with each returned `agent_id`
-5. **Write intermediate files and brief incrementally** — save each research track directly in `HashiCorp/by-customer/[Customer]/[Company]/` as it completes, then integrate the findings into the brief
+5. **Write intermediate files and brief incrementally** — save each research track directly in `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/` as it completes, then integrate the findings into the brief
 
 **Example delegation pattern:**
 
@@ -254,7 +259,7 @@ task(
   description="Check customer data",
   agent_type="explore",
   mode="background",
-  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Check HashiCorp/by-customer/[Customer]/[Company]/ for prior research artifacts and prior briefs. Return: existing product usage, prior contacts found, any stale data that needs refresh."
+  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Check `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/` first for prior research artifacts and briefs. If nothing is there, also check the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Company] Sales Intelligence Brief.md` and legacy intermediates under `docs/sales-research/[account-slug]/`. Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
 )
 
 task(
@@ -380,6 +385,7 @@ Then ask the user for (or infer from context):
  **Products of interest**: (e.g., "Terraform and Vault" — used to tailor keyword searches. The skill always checks for opportunities across the full portfolio: Vault, Terraform, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint)
 - **Location**: (e.g., "Sydney", "Australia" — default to Australia if unspecified)
 - **Customer folder**: (e.g., "Acme" for `HashiCorp/by-customer/Acme/`)
+- **Company folder**: filesystem-safe folder name for the display company (e.g., `Foo/Bar Holdings` → `Foo - Bar Holdings`)
 - **Max profiles**: (default 50 — ask before exceeding)
 
 #### Step 2: Detect browser & navigate to Sales Navigator
@@ -1135,7 +1141,12 @@ Use these Copilot CLI tools for web research:
 
 Combine Sales Navigator profiles with web research into a comprehensive brief.
 
-Check for existing prospect files in the customer folder to avoid duplicates.
+Check the unified company folder first, then the two legacy locations, before creating new files:
+- `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
+- `HashiCorp/by-customer/[Customer Folder]/[Company] Sales Intelligence Brief.md`
+- `docs/sales-research/[account-slug]/`
+
+If legacy artifacts exist, merge or move them into the unified company folder and continue there to avoid duplicate research.
 
 #### Output Format
 
@@ -1488,8 +1499,15 @@ date: [currentDate]
 
 ### Phase 4: Save Intermediate Research Files
 
-Before substantial research begins, create:
-- `HashiCorp/by-customer/[Customer]/[Company]/`
+Before substantial research begins, determine the filesystem-safe folder names and use:
+- `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
+
+Before creating new files, check for prior work in:
+- `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
+- `HashiCorp/by-customer/[Customer Folder]/[Company] Sales Intelligence Brief.md` (legacy final brief)
+- `docs/sales-research/[account-slug]/` (legacy intermediate research; if the slug is unknown, inspect `docs/sales-research/` for the matching company/account before creating a new folder)
+
+If legacy artifacts are found, create the unified company folder once, then move or merge the old brief and intermediate markdown files into it before adding new research.
 
 Save **every intermediate markdown artifact** in that company folder so another agent can consolidate later without searching the repo. Use consistent descriptive filenames such as:
 - `contacts-pass-1.md`
@@ -1509,14 +1527,16 @@ Background-agent outputs must be copied or summarized into these files; do not l
 ### Phase 5: File Final Brief to Vault
 
 Save the final consolidated brief to:
-- `HashiCorp/by-customer/[Customer]/[Company]/[Company] Sales Intelligence Brief.md`
+- `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/[Company] Sales Intelligence Brief.md`
 
 If the customer folder or company folder does not exist, create it.
+
+If a legacy brief already exists at `HashiCorp/by-customer/[Customer Folder]/[Company] Sales Intelligence Brief.md`, migrate or merge it into the new path before writing more output.
 
 If a file already exists, **append new findings** (deep-dives, additional searches) rather than overwriting. Update the Research Status table to reflect what's new.
 
 **Incremental updates:** The research is designed to be built incrementally across sessions. Each session should:
-1. Update or create the relevant intermediate files in `HashiCorp/by-customer/[Customer]/[Company]/`
+1. Update or create the relevant intermediate files in `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 2. Update the Research Status table in the final brief
 3. Add new deep-dive profiles to the Deep-Dive Profiles section
 4. Update the Contact Map tables with new ✅ DEEP-DIVED markers

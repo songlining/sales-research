@@ -84,10 +84,11 @@ Create and use a single company folder for all research artifacts:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 
 Where:
-- `[Company Folder]` is a deterministic filesystem-safe version of the display company name. Replace `/` and `\` with ` - `, replace other path-special characters (`: * ? " < > |`) with `-`, trim trailing periods/spaces, and collapse repeated whitespace. Derive it automatically from `[Company]`; only reuse a different folder name when an existing folder already establishes the canonical path for that company.
+- `[Customer Folder]` is the deterministic filesystem-safe customer/account folder. Derive it automatically from the customer or account name using the same cleanup rules as the company folder: replace `/` and `\` with ` - `, replace other path-special characters (`: * ? " < > |`) with `-`, trim trailing periods/spaces, and collapse repeated whitespace.
+- Before deriving any new path, check whether prior research already established a matching customer folder by searching normalized customer/account names, known aliases, and legacy research paths. Reuse that canonical customer folder whenever it already exists instead of creating a second customer tree with a different alias.
+- `[Company Folder]` is a deterministic filesystem-safe version of the display company name inside the resolved canonical customer folder. Derive it automatically from `[Company]`; only reuse a different folder name when an existing folder in that canonical customer folder already establishes the path for that company.
 - `[Brief Filename]` is the filesystem-safe final brief filename. Use the sanitized company token in the filename, for example `[Company Folder] Sales Intelligence Brief.md`.
-- `[Legacy Brief Filename]` refers to any pre-migration brief filename found in the customer folder. Inspect and migrate that existing file into the unified company folder instead of continuing to write to the legacy path.
-- Apply the same filesystem-safe cleanup to `[Customer Folder]` if the customer name includes path-special characters.
+- `[Legacy Brief Filename]` refers to any pre-migration brief filename found in the resolved canonical customer folder. Inspect and migrate that existing file into the unified company folder instead of continuing to write to the legacy path.
 - Keep the original display company name (`[Company]`) in the brief title and body.
 
 Store **every** intermediate markdown artifact directly in that company folder.
@@ -261,7 +262,7 @@ Agent(
   subagent_type="Explore",
   run_in_background=True,
   description="Check existing customer data",
-  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Always inspect all three locations: `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and legacy intermediates anywhere under `docs/sales-research/` by searching for folders/files that match the company name, account name, known aliases, and each name's normalized legacy slug variant from the old `docs/sales-research/[account-slug]/` scheme (for example `Reserve Bank of Australia` → `reserve-bank-of-australia`). Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
+  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. First resolve the canonical customer folder by checking normalized customer/account names, known aliases, prior research, and each name's normalized legacy slug variant from the old `docs/sales-research/[account-slug]/` scheme (for example `Reserve Bank of Australia` → `reserve-bank-of-australia`). Then inspect all three locations within that resolved customer tree: `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and legacy intermediates anywhere under `docs/sales-research/`. Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
 )
 
 Agent(
@@ -1142,12 +1143,14 @@ Use these built-in Claude Code tools for web research:
 
 Combine Sales Navigator profiles with web research into a comprehensive brief.
 
-Before creating new files, inspect the unified company folder and both legacy locations:
+Before creating new files, resolve the canonical customer folder first: derive the deterministic filesystem-safe `[Customer Folder]`, search for an existing match using normalized customer/account names, known aliases, prior research, and legacy slug variants, and reuse the established customer folder when it already exists.
+
+Once the canonical customer folder is resolved, inspect the unified company folder and both legacy locations within that customer tree:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 - `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`
 - `docs/sales-research/` (search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme, e.g. `Reserve Bank of Australia` → `reserve-bank-of-australia`)
 
-If legacy artifacts exist, merge or move them into the unified company folder and continue there to avoid duplicate research.
+Scope legacy checks to the resolved canonical customer folder, then merge or move any artifacts into the unified company folder and continue there to avoid duplicate research.
 
 #### Output Format
 
@@ -1500,15 +1503,17 @@ date: [currentDate]
 
 ### Phase 4: Save Intermediate Research Files
 
-Before substantial research begins, derive the filesystem-safe folder names (reusing any existing canonical folder when one already exists) and use:
+Before substantial research begins, resolve the canonical customer folder first: derive the deterministic filesystem-safe `[Customer Folder]`, search for an existing match using normalized customer/account names, known aliases, prior research, and legacy slug variants, and reuse that established customer folder whenever it already exists.
+
+Within the resolved canonical customer folder, derive or reuse the filesystem-safe `[Company Folder]` and use:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 
-Before creating new files, check for prior work in:
+Before creating new files, check for prior work within that canonical customer folder in:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 - `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` (legacy final brief)
 - `docs/sales-research/` (legacy intermediate research; search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme before creating a new folder)
 
-If legacy artifacts are found, create the unified company folder once, then move or merge the old brief and intermediate markdown files into it before adding new research.
+Scope legacy checks to the resolved canonical customer folder. If legacy artifacts are found, create the unified company folder once, then move or merge the old brief and intermediate markdown files into it before adding new research.
 
 Save **every intermediate markdown artifact** in that company folder so another agent can consolidate later without searching the repo. Use consistent descriptive filenames such as:
 - `contacts-pass-1.md`
@@ -1530,9 +1535,9 @@ Background-agent outputs must be copied or summarized into these files; do not l
 Save the final consolidated brief to:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/[Brief Filename]`
 
-If the customer folder or company folder does not exist, create it.
+If the resolved canonical customer folder or company folder does not exist, create it.
 
-If a legacy brief already exists at `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, migrate or merge it into the new path before writing more output.
+If a legacy brief already exists at `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` inside the resolved canonical customer folder, migrate or merge it into the new path before writing more output.
 
 If a file already exists, **append new findings** (deep-dives, additional searches) rather than overwriting. Update the Research Status table to reflect what's new.
 

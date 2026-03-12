@@ -261,7 +261,7 @@ task(
   description="Check customer data",
   agent_type="explore",
   mode="background",
-  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Always inspect all three locations: `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and legacy intermediates under `docs/sales-research/[account-slug]/`. Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
+  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Always inspect all three locations: `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and legacy intermediates anywhere under `docs/sales-research/` by searching for folders/files that match the company name, account name, or known aliases. Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
 )
 
 task(
@@ -1146,7 +1146,7 @@ Combine Sales Navigator profiles with web research into a comprehensive brief.
 Before creating new files, inspect the unified company folder and both legacy locations:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 - `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`
-- `docs/sales-research/[account-slug]/`
+- `docs/sales-research/` (search subfolders/files for the company name, account name, and known aliases)
 
 If legacy artifacts exist, merge or move them into the unified company folder and continue there to avoid duplicate research.
 
@@ -1507,7 +1507,7 @@ Before substantial research begins, determine the filesystem-safe folder names a
 Before creating new files, check for prior work in:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 - `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` (legacy final brief)
-- `docs/sales-research/[account-slug]/` (legacy intermediate research; if the slug is unknown, inspect `docs/sales-research/` for the matching company/account before creating a new folder)
+- `docs/sales-research/` (legacy intermediate research; search subfolders/files for the company name, account name, and known aliases before creating a new folder)
 
 If legacy artifacts are found, create the unified company folder once, then move or merge the old brief and intermediate markdown files into it before adding new research.
 

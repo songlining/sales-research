@@ -382,14 +382,12 @@ digraph sales_research {
 
 - **Account Executive (AE)**: The sales rep this research is centered around. Default: **Trung Ly** ([linkedin.com/in/trung-ly-576594](https://www.linkedin.com/in/trung-ly-576594)). If the user names a different AE, use that person's name and LinkedIn URL throughout all sections (Referral & Introduction Paths, Mutual Connection Analysis, Contact Map, etc.). Store as `{AE_NAME}` and `{AE_LINKEDIN}` for the rest of the workflow.
 
-Then ask the user for (or infer from context) the research inputs below, and derive the folder paths from them:
-- **Company name**: (e.g., "Acme Corporation")
-- **Customer/account name**: the underlying account name used to resolve the canonical customer folder when it differs from the display company name; infer it from context or prior research when possible (e.g., parent account, business unit, regional subsidiary)
+Then ask the user for (or infer from context) the actual research inputs below. After these are confirmed, derive/reuse the canonical customer and company folder paths as an internal step:
+- **Company name / target account**: the company being researched (e.g., "Acme Corporation")
+- **Customer/account name**: the underlying account identity used to resolve the canonical customer folder when it differs from the display company name; infer it from context or prior research when possible (e.g., parent account, business unit, regional subsidiary)
 - **Target personas**: (e.g., "DevOps", "cloud engineers", "infrastructure", "platform engineering")
- **Products of interest**: (e.g., "Terraform and Vault" — used to tailor keyword searches. The skill always checks for opportunities across the full portfolio: Vault, Terraform, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint)
+- **Products of interest**: (e.g., "Terraform and Vault" — used to tailor keyword searches. The skill always checks for opportunities across the full portfolio: Vault, Terraform, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint)
 - **Location**: (e.g., "Sydney", "Australia" — default to Australia if unspecified)
-- **Customer folder**: resolve/reuse this automatically from the customer/account name, known aliases, prior research, and legacy paths (e.g., `Acme` for `HashiCorp/by-customer/Acme/`); only ask the user for a folder override if that automatic resolution fails
-- **Company folder**: derive this from the company name using the filesystem-safe normalization rule above (e.g., `Foo/Bar Holdings` → `Foo - Bar Holdings`); only reuse a different folder name if an existing folder already establishes the canonical path
 - **Max profiles**: (default 50 — ask before exceeding)
 
 #### Step 2: Detect browser & navigate to Sales Navigator

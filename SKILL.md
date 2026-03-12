@@ -1,6 +1,6 @@
 ---
 name: sales-research
-description: Use when user asks to research a company, find contacts, do sales prospecting, or prepare for a customer meeting. Prioritises LinkedIn Sales Navigator as the primary research tool, supplemented by web research. Takes a company name and role criteria, extracts profile data, builds intelligence briefs, saves intermediate markdown research files in a predictable account folder, and files final results into the vault.
+description: Use when user asks to research a company, find contacts, do sales prospecting, or prepare for a customer meeting. Prioritises LinkedIn Sales Navigator as the primary research tool, supplemented by web research. Takes a company name and role criteria, extracts profile data, builds intelligence briefs, and stores intermediate artifacts and the final brief together in a unified company folder under HashiCorp/by-customer/[Customer Folder]/[Company Folder]/.
 ---
 
 # Sales Research

@@ -84,7 +84,7 @@ Create and use a single company folder for all research artifacts:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 
 Where:
-- `[Company Folder]` is a deterministic filesystem-safe version of the display company name. Replace `/` and `\` with ` - `, replace other path-special characters (`: * ? " < > |`) with `-`, trim trailing periods/spaces, and collapse repeated whitespace.
+- `[Company Folder]` is a deterministic filesystem-safe version of the display company name. Replace `/` and `\` with ` - `, replace other path-special characters (`: * ? " < > |`) with `-`, trim trailing periods/spaces, and collapse repeated whitespace. Derive it automatically from `[Company]`; only reuse a different folder name when an existing folder already establishes the canonical path for that company.
 - `[Brief Filename]` is the filesystem-safe final brief filename. Use the sanitized company token in the filename, for example `[Company Folder] Sales Intelligence Brief.md`.
 - `[Legacy Brief Filename]` refers to any pre-migration brief filename found in the customer folder. Inspect and migrate that existing file into the unified company folder instead of continuing to write to the legacy path.
 - Apply the same filesystem-safe cleanup to `[Customer Folder]` if the customer name includes path-special characters.
@@ -261,7 +261,7 @@ task(
   description="Check customer data",
   agent_type="explore",
   mode="background",
-  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Always inspect all three locations: `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and legacy intermediates anywhere under `docs/sales-research/` by searching for folders/files that match the company name, account name, or known aliases. Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
+  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Always inspect all three locations: `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and legacy intermediates anywhere under `docs/sales-research/` by searching for folders/files that match the company name, account name, known aliases, and each name's normalized legacy slug variant from the old `docs/sales-research/[account-slug]/` scheme (for example `Reserve Bank of Australia` → `reserve-bank-of-australia`). Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
 )
 
 task(
@@ -381,13 +381,13 @@ digraph sales_research {
 
 - **Account Executive (AE)**: The sales rep this research is centered around. Default: **Trung Ly** ([linkedin.com/in/trung-ly-576594](https://www.linkedin.com/in/trung-ly-576594)). If the user names a different AE, use that person's name and LinkedIn URL throughout all sections (Referral & Introduction Paths, Mutual Connection Analysis, Contact Map, etc.). Store as `{AE_NAME}` and `{AE_LINKEDIN}` for the rest of the workflow.
 
-Then ask the user for (or infer from context):
+Then ask the user for (or infer from context) the research inputs below, and derive the folder paths from them:
 - **Company name**: (e.g., "Acme Corporation")
 - **Target personas**: (e.g., "DevOps", "cloud engineers", "infrastructure", "platform engineering")
  **Products of interest**: (e.g., "Terraform and Vault" — used to tailor keyword searches. The skill always checks for opportunities across the full portfolio: Vault, Terraform, Packer, Boundary, Consul, Nomad, Vault Radar, Waypoint)
 - **Location**: (e.g., "Sydney", "Australia" — default to Australia if unspecified)
 - **Customer folder**: (e.g., "Acme" for `HashiCorp/by-customer/Acme/`)
-- **Company folder**: filesystem-safe folder name for the display company (e.g., `Foo/Bar Holdings` → `Foo - Bar Holdings`)
+- **Company folder**: derive this from the company name using the filesystem-safe normalization rule above (e.g., `Foo/Bar Holdings` → `Foo - Bar Holdings`); only reuse a different folder name if an existing folder already establishes the canonical path
 - **Max profiles**: (default 50 — ask before exceeding)
 
 #### Step 2: Detect browser & navigate to Sales Navigator
@@ -1146,7 +1146,7 @@ Combine Sales Navigator profiles with web research into a comprehensive brief.
 Before creating new files, inspect the unified company folder and both legacy locations:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 - `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`
-- `docs/sales-research/` (search subfolders/files for the company name, account name, and known aliases)
+- `docs/sales-research/` (search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme, e.g. `Reserve Bank of Australia` → `reserve-bank-of-australia`)
 
 If legacy artifacts exist, merge or move them into the unified company folder and continue there to avoid duplicate research.
 
@@ -1501,13 +1501,13 @@ date: [currentDate]
 
 ### Phase 4: Save Intermediate Research Files
 
-Before substantial research begins, determine the filesystem-safe folder names and use:
+Before substantial research begins, derive the filesystem-safe folder names (reusing any existing canonical folder when one already exists) and use:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 
 Before creating new files, check for prior work in:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 - `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` (legacy final brief)
-- `docs/sales-research/` (legacy intermediate research; search subfolders/files for the company name, account name, and known aliases before creating a new folder)
+- `docs/sales-research/` (legacy intermediate research; search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme before creating a new folder)
 
 If legacy artifacts are found, create the unified company folder once, then move or merge the old brief and intermediate markdown files into it before adding new research.
 

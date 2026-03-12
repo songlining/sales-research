@@ -71,25 +71,24 @@ mcp__plugin_superpowers-chrome_chrome__use_browser(action: "browser_mode")
 ### 4. Output directories
 
 ```bash
-ls docs/sales-research/ 2>/dev/null && ls HashiCorp/by-customer/ 2>/dev/null
+ls HashiCorp/by-customer/ 2>/dev/null
 ```
 
 - ✅ Directory exists → continue
 - 🔧 Missing →
   ```bash
-  mkdir -p docs/sales-research HashiCorp/by-customer
+  mkdir -p HashiCorp/by-customer
   ```
 
-Use a **normalized account folder slug** for intermediate files:
-- lowercase
-- replace spaces and punctuation with `-`
-- collapse repeated hyphens
-- trim leading/trailing hyphens
+Create and use a single company folder for all research artifacts:
+- `HashiCorp/by-customer/[Customer]/[Company]/`
+
+Store **every** intermediate markdown artifact directly in that company folder.
 
 Examples:
-- `Singtel Optus` → `singtel-optus`
-- `Reserve Bank of Australia` → `reserve-bank-of-australia`
-- `Qantas Airways` → `qantas-airways`
+- `HashiCorp/by-customer/Telstra/Singtel Optus/`
+- `HashiCorp/by-customer/Commonwealth Bank/Reserve Bank of Australia/`
+- `HashiCorp/by-customer/Qantas/Qantas Airways/`
 
 ### 5. CLAUDE.md (user context — Copilot CLI respects this automatically)
 
@@ -230,7 +229,7 @@ Phase 6: Save final brief to vault
 2. **Dispatch ALL background agents in a SINGLE tool-calling turn** so Copilot can run them in parallel
 3. **Start Sales Navigator browsing yourself** — you have exclusive browser access
 4. **Collect web research results** as they complete — use `read_agent` with each returned `agent_id`
-5. **Write intermediate files and brief incrementally** — save each research track to `docs/sales-research/[Account]/` as it completes, then integrate the findings into the brief
+5. **Write intermediate files and brief incrementally** — save each research track directly in `HashiCorp/by-customer/[Customer]/[Company]/` as it completes, then integrate the findings into the brief
 
 **Example delegation pattern:**
 
@@ -255,7 +254,7 @@ task(
   description="Check customer data",
   agent_type="explore",
   mode="background",
-  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Check HashiCorp/by-customer/[Company]/ for prior research briefs. Return: existing product usage, prior contacts found, any stale data that needs refresh."
+  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. Check HashiCorp/by-customer/[Customer]/[Company]/ for prior research artifacts and prior briefs. Return: existing product usage, prior contacts found, any stale data that needs refresh."
 )
 
 task(
@@ -1490,17 +1489,9 @@ date: [currentDate]
 ### Phase 4: Save Intermediate Research Files
 
 Before substantial research begins, create:
-- `docs/sales-research/[account-slug]/`
+- `HashiCorp/by-customer/[Customer]/[Company]/`
 
-Normalize the company name into a deterministic folder slug:
-- lowercase the name
-- replace spaces, slashes, ampersands, and punctuation with `-`
-- collapse repeated `-`
-- trim leading/trailing `-`
-
-This normalization applies only to the **intermediate research folder path**. Keep the display company name unchanged in the final brief title and final vault filename.
-
-Save **every intermediate markdown artifact** in that folder so another agent can consolidate later without searching the repo. Use consistent descriptive filenames such as:
+Save **every intermediate markdown artifact** in that company folder so another agent can consolidate later without searching the repo. Use consistent descriptive filenames such as:
 - `contacts-pass-1.md`
 - `contacts-pass-2.md`
 - `contacts-follow-hashicorp.md`
@@ -1518,14 +1509,14 @@ Background-agent outputs must be copied or summarized into these files; do not l
 ### Phase 5: File Final Brief to Vault
 
 Save the final consolidated brief to:
-- `HashiCorp/by-customer/[Customer]/[Company] Sales Intelligence Brief.md`
+- `HashiCorp/by-customer/[Customer]/[Company]/[Company] Sales Intelligence Brief.md`
 
-If no customer folder exists, create it.
+If the customer folder or company folder does not exist, create it.
 
 If a file already exists, **append new findings** (deep-dives, additional searches) rather than overwriting. Update the Research Status table to reflect what's new.
 
 **Incremental updates:** The research is designed to be built incrementally across sessions. Each session should:
-1. Update or create the relevant intermediate files in `docs/sales-research/[account-slug]/`
+1. Update or create the relevant intermediate files in `HashiCorp/by-customer/[Customer]/[Company]/`
 2. Update the Research Status table in the final brief
 3. Add new deep-dive profiles to the Deep-Dive Profiles section
 4. Update the Contact Map tables with new ✅ DEEP-DIVED markers
@@ -1569,7 +1560,7 @@ If a file already exists, **append new findings** (deep-dives, additional search
 14. AI/ML discovery: Finds Acme Corp investing in ML for fraud detection (APRA-driven), hiring data scientists, using SageMaker — classifies as "Building" maturity. Maps opportunities: Terraform for ML infra provisioning, Vault for API key management, Nomad for training job scheduling
 14. Competition analysis: Detects CyberArk in 2 job postings (PAM), CloudFormation mentioned in 3 profiles (AWS-native IaC), identifies coexistence strategy for CyberArk (session recording) + displacement strategy for CloudFormation (multi-cloud advantage)
 15. Compiles full intelligence brief with conversation strategy, risks & watchouts, AI/ML opportunities, competitive landscape, and next steps
-16. Saves to `HashiCorp/by-customer/Acme/Acme Corp Sales Intelligence Brief.md`
+16. Saves to `HashiCorp/by-customer/Acme/Acme Corp/Acme Corp Sales Intelligence Brief.md`
 
 ## Browser Commands Used (superpowers-chrome)
 

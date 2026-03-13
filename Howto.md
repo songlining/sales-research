@@ -125,18 +125,15 @@ So your folder looks like:
 │           └── IMPLEMENTATION_SUMMARY.md
 └── HashiCorp/
     └── by-customer/
-        └── [Customer]/
-            └── [Company]/
-                ├── [Company] Contact Research.md
-                ├── [Company] Web Research.md
-                └── [Company] Sales Intelligence Brief.md
 ```
 
-Create the output folder structure for each company you research. Intermediate artifacts and the final brief live together in the same company folder:
+Create only the root output directory during setup:
 
 ```bash
-mkdir -p ~/sales-research/HashiCorp/by-customer/[Customer]/[Company]
+mkdir -p ~/sales-research/HashiCorp/by-customer
 ```
+
+`[Customer]` and `[Company]` are placeholders in the examples below. You do **not** create those nested folders manually during setup — the skill resolves or reuses the canonical customer/company path automatically when it saves artifacts. Intermediate artifacts and the final brief live together in that company folder.
 
 ### Step 7: Set Up Chrome for Sales Navigator
 The AI controls Chrome to browse Sales Navigator on your behalf. It launches Chrome in a special "debug mode" automatically when you start a research session — you don't need to do anything manually.
@@ -382,17 +379,11 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 ├── CLAUDE.md                         ← Your info & customer list
 └── HashiCorp/
     └── by-customer/
-        ├── AMP Customer/
-        │   └── AMP/
-        │       ├── AMP Contact Research.md
-        │       ├── AMP Web Research.md
-        │       └── AMP Sales Intelligence Brief.md
-        ├── Woolworths Customer/
-        │   └── Woolworths/
-        │       ├── Woolworths Contact Research.md
-        │       ├── Woolworths Web Research.md
-        │       └── Woolworths Sales Intelligence Brief.md
-        └── (more companies...)
+        └── [Customer]/               ← placeholder; created/resolved by the skill
+            └── [Company]/            ← placeholder; created/resolved by the skill
+                ├── [Company] Contact Research.md
+                ├── [Company] Web Research.md
+                └── [Company] Sales Intelligence Brief.md
 ```
 
 ---

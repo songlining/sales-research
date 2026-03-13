@@ -133,7 +133,7 @@ Create only the root output directory during setup:
 mkdir -p ~/sales-research/HashiCorp/by-customer
 ```
 
-The skill creates or reuses a canonical filesystem-safe customer/company folder under `~/sales-research/HashiCorp/by-customer/` (for example, `~/sales-research/HashiCorp/by-customer/Acme/Acme Corp/`). The saved folder names may differ slightly from the display customer/company name you type if characters need sanitising. You do **not** create those nested folders manually during setup — the skill resolves the path automatically when it saves artifacts. Intermediate artifacts and the final brief live together in that company folder.
+The skill creates or reuses a canonical customer/company folder under `~/sales-research/HashiCorp/by-customer/` (for example, `~/sales-research/HashiCorp/by-customer/Acme/Acme Corp/`). The first folder may be an existing customer/account folder reused from earlier research or alias resolution, and the customer/company folder names may also be normalized for filesystem safety. You do **not** create those nested folders manually during setup — the skill resolves the path automatically when it saves artifacts. Intermediate artifacts and the final brief live together in that company folder.
 
 ### Step 7: Set Up Chrome for Sales Navigator
 The AI controls Chrome to browse Sales Navigator on your behalf. It launches Chrome in a special "debug mode" automatically when you start a research session — you don't need to do anything manually.
@@ -269,7 +269,7 @@ This typically takes **10–20 minutes** depending on the size of the company. Y
 
 ### Step 5: Review Your Brief
 
-When it's done, open `~/sales-research/HashiCorp/by-customer/`, then open the resolved customer/company folder the skill created or reused for that run. The actual saved folder name is canonical and filesystem-safe, so it may not exactly match the display company name you typed:
+When it's done, open `~/sales-research/HashiCorp/by-customer/`, then open the resolved customer/company folder the skill created or reused for that run. The first folder may be an existing canonical customer/account folder reused from earlier research or alias resolution, and the customer/company folder names may also be normalized for filesystem safety:
 
 ```bash
 open ~/sales-research/HashiCorp/by-customer/

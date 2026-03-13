@@ -96,7 +96,7 @@ Claude Code connects directly to the Anthropic API using your API key or an Anth
 
 ### Step 5: Set Up Your Research Folder
 
-Create a folder where research briefs will be saved. This guide uses an Obsidian vault structure, but any folder works.
+Create a folder where research artifacts and briefs will be saved. This guide uses an Obsidian vault structure, but any folder works.
 
 ```bash
 mkdir -p ~/sales-research/.claude/skills/sales-research
@@ -125,13 +125,17 @@ So your folder looks like:
 │           └── IMPLEMENTATION_SUMMARY.md
 └── HashiCorp/
     └── by-customer/
-        └── (briefs will appear here)
+        └── [Customer]/
+            └── [Company]/
+                ├── [Company] Contact Research.md
+                ├── [Company] Web Research.md
+                └── [Company] Sales Intelligence Brief.md
 ```
 
-Create the output folder:
+Create the output folder structure for each company you research. Intermediate artifacts and the final brief live together in the same company folder:
 
 ```bash
-mkdir -p ~/sales-research/HashiCorp/by-customer
+mkdir -p ~/sales-research/HashiCorp/by-customer/[Customer]/[Company]
 ```
 
 ### Step 7: Set Up Chrome for Sales Navigator
@@ -262,19 +266,19 @@ The AI will:
 4. **Deep-dive top profiles** — clicking into each one for career history, skills, mutual connections
 5. **Run web research in parallel** — tech stack, job postings, news, competitors
 6. **Compile everything** into a structured intelligence brief
-7. **Save the brief** to `HashiCorp/by-customer/[Company]/[Company] Sales Intelligence Brief.md`
+7. **Save the artifacts and brief** in `HashiCorp/by-customer/[Customer]/[Company]/`, including the final brief at `HashiCorp/by-customer/[Customer]/[Company]/[Company] Sales Intelligence Brief.md`
 
 This typically takes **10–20 minutes** depending on the size of the company. You can watch the AI work in the debug Chrome window — it's clicking through Sales Navigator in real time.
 
 ### Step 5: Review Your Brief
 
-When it's done, open the brief:
+When it's done, open the company folder:
 
 ```bash
-open ~/sales-research/HashiCorp/by-customer/[Company]/
+open ~/sales-research/HashiCorp/by-customer/[Customer]/[Company]/
 ```
 
-Or if you use Obsidian, open your `~/sales-research` folder as a vault and the brief will appear with full Markdown formatting.
+Or if you use Obsidian, open your `~/sales-research` folder as a vault and the company folder will show the intermediate notes and final brief together.
 
 ---
 
@@ -361,7 +365,7 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 | Add to existing brief | "Add more contacts to the [Company] brief" |
 | Check if Chrome is running | `curl -s http://127.0.0.1:9222/json/version` |
 | Kill stuck Chrome | `kill $(lsof -ti :9222)` |
-| View your briefs | `open ~/sales-research/HashiCorp/by-customer/` |
+| View a company folder | `open ~/sales-research/HashiCorp/by-customer/[Customer]/[Company]/` |
 
 ---
 
@@ -378,10 +382,16 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 ├── CLAUDE.md                         ← Your info & customer list
 └── HashiCorp/
     └── by-customer/
-        ├── AMP/
-        │   └── AMP Sales Intelligence Brief.md
-        ├── Woolworths/
-        │   └── Woolworths Sales Intelligence Brief.md
+        ├── AMP Customer/
+        │   └── AMP/
+        │       ├── AMP Contact Research.md
+        │       ├── AMP Web Research.md
+        │       └── AMP Sales Intelligence Brief.md
+        ├── Woolworths Customer/
+        │   └── Woolworths/
+        │       ├── Woolworths Contact Research.md
+        │       ├── Woolworths Web Research.md
+        │       └── Woolworths Sales Intelligence Brief.md
         └── (more companies...)
 ```
 

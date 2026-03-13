@@ -383,8 +383,9 @@ After setup, you'll have the skill files and top-level workspace. The fuller cus
     └── by-customer/
         └── [Customer]/               ← placeholder; created/resolved by the skill
             └── [Company]/            ← placeholder; created/resolved by the skill
-                ├── [Company] Contact Research.md
-                ├── [Company] Web Research.md
+                ├── contacts-pass-1.md
+                ├── tech-landscape-research.md
+                ├── ...
                 └── [Company] Sales Intelligence Brief.md
 ```
 

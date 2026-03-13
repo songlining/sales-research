@@ -133,7 +133,7 @@ Create only the root output directory during setup:
 mkdir -p ~/sales-research/HashiCorp/by-customer
 ```
 
-The skill creates or reuses a canonical filesystem-safe customer/company folder under `~/sales-research/HashiCorp/by-customer/` (for example, `~/sales-research/HashiCorp/by-customer/acme-bank/platform-engineering/`). The saved folder names may differ slightly from the display customer/company name you type if characters need sanitising. You do **not** create those nested folders manually during setup — the skill resolves the path automatically when it saves artifacts. Intermediate artifacts and the final brief live together in that company folder.
+The skill creates or reuses a canonical filesystem-safe customer/company folder under `~/sales-research/HashiCorp/by-customer/` (for example, `~/sales-research/HashiCorp/by-customer/Acme/Acme Corp/`). The saved folder names may differ slightly from the display customer/company name you type if characters need sanitising. You do **not** create those nested folders manually during setup — the skill resolves the path automatically when it saves artifacts. Intermediate artifacts and the final brief live together in that company folder.
 
 ### Step 7: Set Up Chrome for Sales Navigator
 The AI controls Chrome to browse Sales Navigator on your behalf. It launches Chrome in a special "debug mode" automatically when you start a research session — you don't need to do anything manually.
@@ -263,7 +263,7 @@ The AI will:
 4. **Deep-dive top profiles** — clicking into each one for career history, skills, mutual connections
 5. **Run web research in parallel** — tech stack, job postings, news, competitors
 6. **Compile everything** into a structured intelligence brief
-7. **Save the artifacts and brief** in the resolved canonical company folder under `~/sales-research/HashiCorp/by-customer/` — for example, `~/sales-research/HashiCorp/by-customer/acme-bank/platform-engineering/`, with the final brief saved alongside the intermediate notes as `platform-engineering-sales-intelligence-brief.md`
+7. **Save the artifacts and brief** in the resolved canonical company folder under `~/sales-research/HashiCorp/by-customer/` — for example, `~/sales-research/HashiCorp/by-customer/Acme/Acme Corp/`, with the final brief saved alongside the intermediate notes as `Acme Corp Sales Intelligence Brief.md`
 
 This typically takes **10–20 minutes** depending on the size of the company. You can watch the AI work in the debug Chrome window — it's clicking through Sales Navigator in real time.
 
@@ -275,7 +275,7 @@ When it's done, open `~/sales-research/HashiCorp/by-customer/`, then open the re
 open ~/sales-research/HashiCorp/by-customer/
 ```
 
-For example, you might open `~/sales-research/HashiCorp/by-customer/acme-bank/platform-engineering/`. Or if you use Obsidian, open your `~/sales-research` folder as a vault and the company folder will show the intermediate notes and final brief together.
+For example, you might open `~/sales-research/HashiCorp/by-customer/Acme/Acme Corp/`. Or if you use Obsidian, open your `~/sales-research` folder as a vault and the company folder will show the intermediate notes and final brief together.
 
 ---
 
@@ -381,12 +381,12 @@ After setup, you'll have the skill files and top-level workspace. The fuller cus
 ├── CLAUDE.md                         ← Your info & customer list
 └── HashiCorp/
     └── by-customer/
-        └── acme-bank/                        ← canonical customer folder; created/resolved by the skill
-            └── platform-engineering/        ← canonical company folder; created/resolved by the skill
+        └── Acme/                            ← canonical customer folder; created/resolved by the skill
+            └── Acme Corp/                   ← canonical company folder; created/resolved by the skill
                 ├── contacts-pass-1.md
                 ├── tech-landscape-research.md
                 ├── meeting-prep-notes.md
-                └── platform-engineering-sales-intelligence-brief.md
+                └── Acme Corp Sales Intelligence Brief.md
 ```
 
 ---

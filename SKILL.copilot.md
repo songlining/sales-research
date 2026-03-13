@@ -94,9 +94,9 @@ Where:
 Store **every** intermediate markdown artifact directly in that company folder.
 
 Examples:
-- `HashiCorp/by-customer/Telstra/Singtel Optus/`
-- `HashiCorp/by-customer/Commonwealth Bank/Reserve Bank of Australia/`
-- `HashiCorp/by-customer/Qantas/Qantas Airways - Jetstar/`
+- `HashiCorp/by-customer/Example Customer/Example Company/`
+- `HashiCorp/by-customer/Parent Account/Regional Subsidiary - APAC/`
+- `HashiCorp/by-customer/Strategic Account/Innovation Program/`
 
 ### 5. CLAUDE.md (user context — Copilot CLI respects this automatically)
 

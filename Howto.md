@@ -366,7 +366,9 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 
 ---
 
-## Folder Structure After Setup
+## Folder Structure After Your First Research Run
+
+After setup, you'll have the skill files and top-level workspace. The fuller customer/company tree below appears once the skill has researched a company.
 
 ```
 ~/sales-research/

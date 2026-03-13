@@ -262,7 +262,7 @@ Agent(
   subagent_type="Explore",
   run_in_background=True,
   description="Check existing customer data",
-  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. First resolve the canonical customer folder by checking normalized customer/account names, known aliases, prior research, and each name's normalized legacy slug variant from the old `docs/sales-research/[account-slug]/` scheme (for example `Reserve Bank of Australia` → `reserve-bank-of-australia`). Then inspect all three locations within that resolved customer tree: `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy brief path `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and legacy intermediates anywhere under `docs/sales-research/`. Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
+  prompt="[CONTEXT]: Check for existing intel on [Company]. Read CLAUDE.md for customer table entries. First resolve the canonical customer folder by checking normalized customer/account names, known aliases, prior research, and each name's normalized legacy slug variant from the old `docs/sales-research/[account-slug]/` scheme (for example `Reserve Bank of Australia` → `reserve-bank-of-australia`). Then inspect all three relevant locations before writing more output: the unified company folder `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, the legacy flat brief path inside that resolved customer tree `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`, and repo-level legacy intermediates anywhere under `docs/sales-research/`. Return: existing product usage, prior contacts found, stale data that needs refresh, and any artifacts that should be merged or moved into the unified company folder."
 )
 
 Agent(
@@ -1144,12 +1144,12 @@ Combine Sales Navigator profiles with web research into a comprehensive brief.
 
 Before creating new files, resolve the canonical customer folder first: derive the deterministic filesystem-safe `[Customer Folder]`, search for an existing match using normalized customer/account names, known aliases, prior research, and legacy slug variants, and reuse the established customer folder when it already exists.
 
-Once the canonical customer folder is resolved, inspect the unified company folder and both legacy locations within that customer tree:
+Once the canonical customer folder is resolved, inspect the unified company folder plus both legacy sources before writing more output:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
-- `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]`
-- `docs/sales-research/` (search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme, e.g. `Reserve Bank of Australia` → `reserve-bank-of-australia`)
+- `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` (legacy flat brief inside the resolved customer tree)
+- `docs/sales-research/` (repo-level legacy intermediates outside the customer tree; search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme, e.g. `Reserve Bank of Australia` → `reserve-bank-of-australia`)
 
-Scope legacy checks to the resolved canonical customer folder, then move legacy artifacts into the unified company folder when possible and continue there to avoid duplicate research. If a legacy flat brief must be merged manually instead of moved wholesale, archive, remove, or tombstone the old flat brief immediately after the merge succeeds so later sessions do not import it again.
+Scope customer-tree legacy checks to the resolved canonical customer folder, and separately search the repo-level `docs/sales-research/` legacy path for matching artifacts before writing new files. Move any matching legacy artifacts into the unified company folder when possible and continue there to avoid duplicate research. If a legacy flat brief must be merged manually instead of moved wholesale, archive, remove, or tombstone the old flat brief immediately after the merge succeeds so later sessions do not import it again.
 
 #### Output Format
 
@@ -1507,12 +1507,12 @@ Before substantial research begins, resolve the canonical customer folder first:
 Within the resolved canonical customer folder, derive or reuse the filesystem-safe `[Company Folder]` and use:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 
-Before creating new files, check for prior work within that canonical customer folder in:
+Before creating new files, check for prior work in all relevant locations:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
-- `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` (legacy final brief)
-- `docs/sales-research/` (legacy intermediate research; search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme before creating a new folder)
+- `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` (legacy final brief inside the resolved customer tree)
+- `docs/sales-research/` (repo-level legacy intermediate research outside the customer tree; search subfolders/files for the company name, account name, known aliases, and the normalized slug variants those names would have produced under the old `docs/sales-research/[account-slug]/` scheme before creating a new folder)
 
-Scope legacy checks to the resolved canonical customer folder. If legacy artifacts are found, create the unified company folder once, then move the old brief and intermediate markdown files into it when possible before adding new research. If the legacy brief requires a manual merge, complete that merge once and then archive, remove, or tombstone the old flat brief so future sessions cannot re-import it.
+Scope customer-tree legacy checks to the resolved canonical customer folder, and separately inspect `docs/sales-research/` for matching repo-level legacy artifacts before adding new research. If legacy artifacts are found, create the unified company folder once, then move the old brief and intermediate markdown files into it when possible. If the legacy brief requires a manual merge, complete that merge once and then archive, remove, or tombstone the old flat brief so future sessions cannot re-import it.
 
 Save **every intermediate markdown artifact** in that company folder so another agent can consolidate later without searching the repo. Use consistent descriptive filenames such as:
 - `contacts-pass-1.md`

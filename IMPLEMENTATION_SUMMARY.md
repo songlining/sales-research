@@ -89,7 +89,7 @@ The skill now runs a **two-phase research workflow**:
 3. **Phase 3 — Intelligence Brief:** Tiered output format
    - Tier 1 (Primary Targets), Tier 2 (Influencers), Tier 3 (Extended Network)
    - Technology landscape, conversation strategy, warm intro paths
-   - Saved to `HashiCorp/by-customer/[Customer]/[Company] Sales Intelligence [date].md`
+   - Saved under `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, where intermediate markdown artifacts and the final brief live together (for example, `HashiCorp/by-customer/Acme/Acme Corp/Acme Corp Sales Intelligence Brief.md`)
 
 ## Key Files
 

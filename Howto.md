@@ -362,7 +362,7 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 | Add to existing brief | "Add more contacts to the [Company] brief" |
 | Check if Chrome is running | `curl -s http://127.0.0.1:9222/json/version` |
 | Kill stuck Chrome | `kill $(lsof -ti :9222)` |
-| View a company folder | `open ~/sales-research/HashiCorp/by-customer/` |
+| Open research root | `open ~/sales-research/HashiCorp/by-customer/` |
 
 ---
 

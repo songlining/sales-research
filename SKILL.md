@@ -1144,6 +1144,11 @@ Combine Sales Navigator profiles with web research into a comprehensive brief.
 
 Before creating new files, resolve the canonical customer folder first: derive the deterministic filesystem-safe `[Customer Folder]`, search for an existing match using normalized customer/account names, known aliases, prior research, and legacy slug variants, and reuse the established customer folder when it already exists.
 
+Legacy lookup only (do not reuse this as an output path):
+- Compute old `docs/sales-research/[account-slug]/` variants from relevant names such as the company display name, customer/account name, and known aliases.
+- Apply the prior normalization rules: lowercase, replace spaces/punctuation/path separators with `-`, collapse repeated `-`, and trim leading/trailing `-`.
+- Use those variants only to find and migrate legacy artifacts; do not treat `docs/sales-research/...` as a current output location.
+
 Once the canonical customer folder is resolved, inspect the unified company folder plus both legacy sources before writing more output:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`
 - `HashiCorp/by-customer/[Customer Folder]/[Legacy Brief Filename]` (legacy flat brief inside the resolved customer tree)
@@ -1503,6 +1508,11 @@ date: [currentDate]
 ### Phase 4: Save Intermediate Research Files
 
 Before substantial research begins, resolve the canonical customer folder first: derive the deterministic filesystem-safe `[Customer Folder]`, search for an existing match using normalized customer/account names, known aliases, prior research, and legacy slug variants, and reuse that established customer folder whenever it already exists.
+
+Legacy lookup only (do not reuse this as an output path):
+- Compute old `docs/sales-research/[account-slug]/` variants from relevant names such as the company display name, customer/account name, and known aliases.
+- Apply the prior normalization rules: lowercase, replace spaces/punctuation/path separators with `-`, collapse repeated `-`, and trim leading/trailing `-`.
+- Use those variants only to find and migrate legacy artifacts; do not treat `docs/sales-research/...` as a current output location.
 
 Within the resolved canonical customer folder, derive or reuse the filesystem-safe `[Company Folder]` and use:
 - `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`

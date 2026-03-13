@@ -133,7 +133,7 @@ Create only the root output directory during setup:
 mkdir -p ~/sales-research/HashiCorp/by-customer
 ```
 
-`[Customer]` and `[Company]` are placeholders in the examples below. You do **not** create those nested folders manually during setup — the skill resolves or reuses the canonical customer/company path automatically when it saves artifacts. Intermediate artifacts and the final brief live together in that company folder.
+`[Customer Folder]`, `[Company Folder]`, and `[Brief Filename]` are placeholders for the canonical filesystem-safe path the skill resolves automatically. They may differ slightly from the display customer/company name you type (for example, if the name contains characters that need sanitising). You do **not** create those nested folders manually during setup — the skill resolves or reuses the canonical customer/company path automatically when it saves artifacts. Intermediate artifacts and the final brief live together in that company folder.
 
 ### Step 7: Set Up Chrome for Sales Navigator
 The AI controls Chrome to browse Sales Navigator on your behalf. It launches Chrome in a special "debug mode" automatically when you start a research session — you don't need to do anything manually.
@@ -263,16 +263,16 @@ The AI will:
 4. **Deep-dive top profiles** — clicking into each one for career history, skills, mutual connections
 5. **Run web research in parallel** — tech stack, job postings, news, competitors
 6. **Compile everything** into a structured intelligence brief
-7. **Save the artifacts and brief** in `HashiCorp/by-customer/[Customer]/[Company]/`, including the final brief at `HashiCorp/by-customer/[Customer]/[Company]/[Company] Sales Intelligence Brief.md`
+7. **Save the artifacts and brief** in `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/`, including the final brief at `HashiCorp/by-customer/[Customer Folder]/[Company Folder]/[Brief Filename]`
 
 This typically takes **10–20 minutes** depending on the size of the company. You can watch the AI work in the debug Chrome window — it's clicking through Sales Navigator in real time.
 
 ### Step 5: Review Your Brief
 
-When it's done, open the company folder:
+When it's done, open the company folder. The actual saved folder name is the canonical filesystem-safe path resolved by the skill, so it may not exactly match the display company name you typed:
 
 ```bash
-open ~/sales-research/HashiCorp/by-customer/[Customer]/[Company]/
+open ~/sales-research/HashiCorp/by-customer/[Customer Folder]/[Company Folder]/
 ```
 
 Or if you use Obsidian, open your `~/sales-research` folder as a vault and the company folder will show the intermediate notes and final brief together.
@@ -362,7 +362,7 @@ LinkedIn detected automated browsing. In the debug Chrome window:
 | Add to existing brief | "Add more contacts to the [Company] brief" |
 | Check if Chrome is running | `curl -s http://127.0.0.1:9222/json/version` |
 | Kill stuck Chrome | `kill $(lsof -ti :9222)` |
-| View a company folder | `open ~/sales-research/HashiCorp/by-customer/[Customer]/[Company]/` |
+| View a company folder | `open ~/sales-research/HashiCorp/by-customer/[Customer Folder]/[Company Folder]/` |
 
 ---
 
@@ -381,12 +381,12 @@ After setup, you'll have the skill files and top-level workspace. The fuller cus
 ├── CLAUDE.md                         ← Your info & customer list
 └── HashiCorp/
     └── by-customer/
-        └── [Customer]/               ← placeholder; created/resolved by the skill
-            └── [Company]/            ← placeholder; created/resolved by the skill
+        └── [Customer Folder]/        ← canonical filesystem-safe folder; created/resolved by the skill
+            └── [Company Folder]/     ← canonical filesystem-safe folder; created/resolved by the skill
                 ├── contacts-pass-1.md
                 ├── tech-landscape-research.md
                 ├── ...
-                └── [Company] Sales Intelligence Brief.md
+                └── [Brief Filename]
 ```
 
 ---

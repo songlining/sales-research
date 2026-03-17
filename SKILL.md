@@ -54,12 +54,12 @@ ls "/Applications/Google Chrome.app"
 - 👤 Not found → tell the user:
   > Google Chrome is not installed. Please download and install it from https://www.google.com/chrome/ then say "continue".
 
-### 3. Superpowers Chrome Plugin
+### 3. Superpowers Chrome Plugin + WebMCP Chrome
 
-Verify the superpowers-chrome plugin is available:
+Verify the superpowers-chrome plugin is available and can reach the user's existing WebMCP-enabled Chrome session:
 
 ```
-# Check if superpowers-chrome is available by testing browser mode
+# Check if superpowers-chrome can reach the current Chrome session
 mcp__plugin_superpowers-chrome_chrome__use_browser(action: "browser_mode")
 ```
 
@@ -67,6 +67,8 @@ mcp__plugin_superpowers-chrome_chrome__use_browser(action: "browser_mode")
 - 🔧 Tool not available → tell the user:
   > The superpowers-chrome plugin is not installed. Please install it from the Claude Code marketplace, then restart your Claude Code session and repeat your request.
   **Stop here** — the plugin won't load until Claude Code restarts.
+- 🔧 Browser connection fails or no tabs are available → tell the user:
+  > I couldn't reach your existing Chrome session. Please open Chrome, upgrade Chrome if needed, enable WebMCP in Chrome, and then repeat your request. This skill is designed to reuse your current Chrome session rather than starting a separate isolated-profile browser.
 
 ### 4. Output directories
 
@@ -135,49 +137,47 @@ Then proceed to Research Priority Order below.
 
 **ALWAYS check browser state FIRST before any navigation.**
 
-Use superpowers-chrome to detect the current browser state:
+Use superpowers-chrome to detect the current browser state in the user's existing WebMCP-enabled Chrome:
 
-1. **Check browser mode**: `{action: "browser_mode"}` — returns whether Chrome is running, headless/headed mode, and current profile
-2. **List open tabs**: `{action: "list_tabs"}` — returns all open tabs with URLs
+1. **Check browser mode**: `{action: "browser_mode"}` — confirms the MCP server can reach the current Chrome session
+2. **List open tabs**: `{action: "list_tabs"}` — returns tabs from that existing Chrome window/profile
 3. **Check if any tab is on Sales Navigator** — look for URLs containing `linkedin.com/sales/` in the tab list
 
 **Decision tree:**
 
 ```
 {action: "list_tabs"} succeeds?
-├── YES → Tabs returned
-│   ├── Sales Navigator tab exists? → Use it (pass tab_index), verify auth
-│   └── No Sales Nav tab? → Navigate to Sales Navigator
+├── YES → Tabs returned from the user's existing Chrome session
+│   ├── Sales Navigator tab exists? → Use it (pass `tab_index`), verify auth
+│   └── No Sales Nav tab? → Navigate to Sales Navigator in that same Chrome session
 │       │   {action: "navigate", payload: "https://www.linkedin.com/sales/search/people"}
 │       ├── Authenticated? → Read auto-captured .md file, look for search UI → Proceed
-│       └── Login page? → Switch to headed mode for user login (see below)
-└── NO → superpowers-chrome not available → error with setup instructions
+│       └── Login page? → Ask the user to log in in Chrome, then continue (see below)
+└── NO → existing WebMCP-enabled Chrome unavailable → error with setup/upgrade instructions
 ```
 
-**Browser invariant:** Always use `mcp__plugin_superpowers-chrome_chrome__use_browser` for browser work. Do **not** manually launch Chrome, do not switch to another browser automation tool, and do not try to connect to Chrome directly from the shell or via a fixed debugging port.
+**Browser invariant:** Always use `mcp__plugin_superpowers-chrome_chrome__use_browser` for browser work. Reuse the user's existing WebMCP-enabled Chrome session. Do **not** manually launch Chrome, start a second isolated-profile Chrome instance, switch to another browser automation tool, or try to connect to Chrome directly from the shell or via a fixed debugging port.
 
-**Startup verification:** Treat Chrome lifecycle as MCP-managed and CDP-controlled, but verify readiness with MCP read actions instead of assuming startup succeeded:
+**Startup verification:** Treat browser availability as user-owned and WebMCP-backed, then verify readiness with MCP read actions instead of assuming the server will launch a separate browser for you:
 
 1. Call `{action: "browser_mode"}`.
 2. Call `{action: "list_tabs"}`.
-3. If either call fails, or Chrome appears briefly and then exits, stop and report a **superpowers-chrome startup failure** rather than guessing.
-4. Do **not** use `{action: "show_browser"}` / `{action: "hide_browser"}` as generic startup recovery.
+3. If either call fails, stop and tell the user to open Chrome, upgrade Chrome if needed, and enable WebMCP before retrying.
+4. Do **not** use `{action: "show_browser"}` / `{action: "hide_browser"}` as generic startup recovery, and do **not** rely on the MCP to spin up a separate browser profile.
 
-The underlying browser control channel is the **Chrome DevTools Protocol (CDP)**. Let the MCP manage any free internal CDP port; do not assume or configure a fixed remote debugging port yourself.
+The underlying browser control channel still uses Chrome's developer tooling. Let the user's WebMCP-enabled Chrome expose that session to the MCP server; do not assume or configure a fixed remote debugging port yourself.
 
 ### Session Recovery & First-Time Login
 
 If Sales Navigator shows a login page or session expiration:
 
-1. **Switch to headed mode**: `{action: "show_browser"}` — makes Chrome visible so user can interact
+1. **Do not spawn a separate browser** — stay on the user's existing Chrome session
 2. **Tell the user**:
-   > **Your LinkedIn Sales Navigator session needs authentication.** I've made the Chrome window visible. Please log in to Sales Navigator, then say "continue".
-3. **After login**: `{action: "hide_browser"}` — switch back to headless mode
-4. **Session persists** in the superpowers-chrome profile directory across restarts
+   > **Your LinkedIn Sales Navigator session needs authentication.** Please use your existing Chrome window to log in to Sales Navigator, make sure WebMCP remains enabled, and then say "continue".
+3. **After login**: rerun `{action: "browser_mode"}` and `{action: "list_tabs"}`, then continue in the same Chrome session
+4. **Session persistence** comes from the user's normal Chrome profile/session, not a superpowers-managed isolated profile
 
-**First-time setup:** On the very first use, the user must log into LinkedIn Sales Navigator in the headed Chrome window. The session cookie (`li_at`) persists in the superpowers-chrome profile (~1 year).
-
-**Profile location:** `~/Library/Caches/superpowers/browser-profiles/superpowers-chrome/` (macOS)
+**First-time setup:** Before the first use, the user should sign in to LinkedIn Sales Navigator in their normal Chrome profile and enable WebMCP in Chrome. The skill should then reuse that same session on future runs.
 
 ## Parallel Subagent Architecture
 
@@ -394,12 +394,12 @@ Then ask the user for (or infer from context) the actual research inputs below. 
 
 **Follow the Browser Detection flow above.** In summary:
 
-1. Call `{action: "browser_mode"}` first, then `{action: "list_tabs"}` to confirm the MCP-managed browser session is actually available
-2. If either check fails, stop and report a `superpowers-chrome` startup failure — do **not** auto-toggle `{action: "show_browser"}` / `{action: "hide_browser"}` during startup
+1. Call `{action: "browser_mode"}` first, then `{action: "list_tabs"}` to confirm the user's existing WebMCP-backed Chrome session is reachable
+2. If either check fails, stop and ask the user to open Chrome, upgrade Chrome if needed, and enable WebMCP — do **not** try to start a separate browser/profile during startup
 3. If a Sales Navigator tab exists, use it (pass `tab_index` on subsequent actions)
 4. If no Sales Nav tab, navigate: `{action: "navigate", payload: "https://www.linkedin.com/sales/search/people"}`
 5. Read the auto-captured `.md` file to verify authentication (look for search UI elements)
-6. If a login page appears, switch to headed mode: `{action: "show_browser"}` → user logs in → `{action: "hide_browser"}`
+6. If a login page appears, ask the user to log in in their existing Chrome window/tab, then rerun the checks and continue
 
 **Check for the company as a saved account first:**
 - Navigate to `https://www.linkedin.com/sales/company/[companyId]` if known
@@ -1562,10 +1562,10 @@ If a file already exists, **append new findings** (deep-dives, additional search
 
 | Situation | Action |
 |-----------|--------|
-| No browser detected | Stay inside `superpowers-chrome` MCP only: call `{action: "browser_mode"}`, then `{action: "list_tabs"}`. If either check fails or Chrome starts and exits, report a `superpowers-chrome` startup failure. Do **not** auto-toggle `{action: "show_browser"}` / `{action: "hide_browser"}` as startup recovery. |
-| Browser detected but no Sales Nav session | Navigate to Sales Navigator, read auto-captured `.md` to check auth |
-| Login page appears | Session expired — `{action: "show_browser"}` → ask user to log in → `{action: "hide_browser"}` |
-| Chrome not starting | Chrome lifecycle is MCP-managed over CDP. Do **not** manually launch Chrome, do not rely on a fixed remote debugging port, and do not fall back to another browser tool. If `{action: "browser_mode"}` / `{action: "list_tabs"}` fail or Chrome immediately exits, stop and tell the user the MCP-managed session is not staying alive. |
+| No browser detected | Stay inside `superpowers-chrome` MCP only: call `{action: "browser_mode"}`, then `{action: "list_tabs"}`. If either check fails, stop and tell the user to open Chrome, upgrade Chrome if needed, and enable WebMCP. Do **not** start a separate isolated-profile browser as recovery. |
+| Browser detected but no Sales Nav session | Navigate to Sales Navigator in that same Chrome session, then read the auto-captured `.md` to check auth |
+| Login page appears | Session expired — ask the user to log in in their existing Chrome window/tab, confirm WebMCP remains enabled, then continue |
+| Chrome not starting | This skill does not launch a separate Chrome instance. Tell the user to open or relaunch Chrome, upgrade Chrome if needed, verify WebMCP is enabled, and retry. Do **not** rely on a fixed remote debugging port or another browser tool. |
 | MCP tool permission prompt | Claude Code may ask the user to approve MCP tool usage on first invocation. This is normal — approve and continue. |
 | 0 search results | Inform user, suggest broadening criteria |
 | Page doesn't load (timeout) | Retry with `{action: "await_text", payload: "...", timeout: 30000}`, then ask user |
@@ -1580,7 +1580,7 @@ If a file already exists, **append new findings** (deep-dives, additional search
 
 **Skill does:**
 1. Checks CLAUDE.md: Acme Corp has Vault Dedicated (100), TFE-BUS (1,000), Packer (7,000)
-2. Calls `{action: "browser_mode"}` and then `{action: "list_tabs"}` — confirms the `superpowers-chrome` session is alive and detects a browser with Sales Navigator already open
+2. Calls `{action: "browser_mode"}` and then `{action: "list_tabs"}` — confirms the existing WebMCP-backed Chrome session is reachable and detects whether Sales Navigator is already open
 3. Navigates to Sales Navigator tab, reads auto-captured `.md` to verify authentication
 4. **Pass 1**: Searches Acme Corp + IT function + Manager/Director/VP/CXO seniority → captures leadership (490 results, page 1 captured)
 5. **Pass 2**: Searches Acme Corp + keywords `terraform OR vault OR hashicorp` → captures specialists (16 results, all captured)
@@ -1601,7 +1601,7 @@ If a file already exists, **append new findings** (deep-dives, additional search
 
 All browser interactions use the single `mcp__plugin_superpowers-chrome_chrome__use_browser` tool with an `action` parameter:
 
-**Rule:** For this skill, browser interaction must always stay on `superpowers-chrome` MCP. Do not fall back to manual Chrome launch, direct CDP/WebSocket control, Playwright, or any other browser tool. Reserve `{action: "show_browser"}` / `{action: "hide_browser"}` for confirmed login or another explicit user-interaction need.
+**Rule:** For this skill, browser interaction must always stay on `superpowers-chrome` MCP and reuse the user's existing WebMCP-enabled Chrome session. Do not fall back to manual Chrome launch, a second isolated profile, direct CDP/WebSocket control, Playwright, or any other browser tool. For login or another explicit user-interaction need, have the user act in their existing Chrome window.
 
 | Action | Purpose |
 |--------|---------|
@@ -1615,8 +1615,8 @@ All browser interactions use the single `mcp__plugin_superpowers-chrome_chrome__
 | `{action: "await_element", selector}` | Wait for specific element to appear |
 | `{action: "screenshot", payload: path}` | Capture screenshot for debugging |
 | `{action: "new_tab"}` | Open new tab for parallel browsing |
-| `{action: "show_browser"}` / `{action: "hide_browser"}` | Toggle headed mode for confirmed login or another explicit user-interaction step |
-| `{action: "browser_mode"}` | Check browser status and profile |
+| `{action: "show_browser"}` / `{action: "hide_browser"}` | Avoid in the normal WebMCP flow — use the user's existing Chrome window for login or other explicit interaction instead |
+| `{action: "browser_mode"}` | Check that the existing WebMCP-backed Chrome session is reachable |
 | `Read` tool on auto-captured `.md` files | **Primary** way to inspect page content — avoids context bloat |
 
 ### Context Window Strategy
@@ -1633,7 +1633,7 @@ This keeps DOM content out of the conversation context unless explicitly needed.
 ## Limitations
 
 - Requires active LinkedIn Sales Navigator subscription
-- All browser work must use `superpowers-chrome` MCP actions with MCP-managed CDP control; do not manually launch Chrome and do not depend on any fixed CDP port
+- All browser work must use `superpowers-chrome` MCP actions against the user's existing WebMCP-enabled Chrome session; do not manually launch Chrome, start a separate isolated profile, or depend on any fixed CDP port
 - LinkedIn `li_at` cookie typically lasts ~1 year, but LinkedIn may invalidate sessions on suspicious activity
 - Rate limits: 2-3 second delays enforced between actions; stop on CAPTCHA
 - Dynamic selectors: always read auto-captured content first, never rely on hardcoded selectors
@@ -1657,4 +1657,4 @@ This keeps DOM content out of the conversation context unless explicitly needed.
 - Mark profiles as ✅ **DEEP-DIVED** in tables so you can see research coverage at a glance
 - **Contractors are NOT decision-makers** — always note employment type and flag the likely budget holder
 - Use `#prospects` and `#sales-research` tags for Dataview queries across all research files
-- **Use headed mode only for login or explicit user interaction** — do not use `{action: "show_browser"}` as generic startup recovery
+- **Use the user's existing Chrome window for login or explicit interaction** — do not use `{action: "show_browser"}` as generic startup recovery or to force a second browser instance
